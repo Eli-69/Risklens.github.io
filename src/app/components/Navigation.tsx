@@ -3,7 +3,8 @@ import { Button } from './ui/button';
 import { Link } from 'react-router';
 
 // Add a placeholder for the logo
-const logoImage = "https://via.placeholder.com/100x50?text=RiskLens";
+import Logo from "../assets/logo.svg?react";
+<Logo className="h-10 w-auto text-white" /> 
 
 export function Navigation() {
   return (
