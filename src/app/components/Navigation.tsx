@@ -1,17 +1,20 @@
 import { Button } from './ui/button';
 import { Link } from 'react-router';
+import { ReactComponent as Logo } from '../../assets/logo.svg'; // Import your logo
 
 export function Navigation() {
   return (
     <nav className="bg-white border-b border-gray-200">
       <div className="container mx-auto px-6">
         <div className="flex items-center justify-between h-16">
+          
+          {/* Logo + Site Name */}
           <Link to="/" className="flex items-center gap-2">
-            {/* Use public folder path directly */}
-            <img src="/images/logo.svg" alt="RiskLens Logo" className="h-10 w-auto" />
+            <Logo className="h-8 w-8" />
             <span className="text-xl font-semibold text-gray-900">RiskLens</span>
           </Link>
 
+          {/* Navigation Links */}
           <div className="hidden md:flex items-center gap-8">
             <Link to="/" className="text-gray-700 hover:text-gray-900 transition-colors">
               Home
