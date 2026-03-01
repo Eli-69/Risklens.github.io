@@ -41,4 +41,7 @@ export const router = createBrowserRouter([
     path: "/help",
     Component: Help,
   },
-]);
+]
+{
+  basename: "Risklens.github.io"
+});
