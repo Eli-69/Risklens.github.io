@@ -9,12 +9,15 @@ export function Navigation() {
         <div className="flex items-center justify-between h-16">
           
           {/* Logo + Site Name */}
-          <Link to="/" className="flex items-center gap-1"> {/* reduced gap for tight alignment */}
-            <img
-              src={Logo}
-              alt="RiskLens Logo"
-              className="h-12 w-auto transition-transform duration-300 hover:scale-110"
-            />
+          <Link to="/" className="flex items-center gap-1">
+            {/* Wrapper for precise vertical alignment */}
+            <div className="flex items-center -translate-y-0.5">
+              <img
+                src={Logo}
+                alt="RiskLens Logo"
+                className="h-12 w-auto transition-transform duration-300 hover:scale-110"
+              />
+            </div>
             <span className="text-xl font-semibold text-gray-900">RiskLens</span>
           </Link>
 
