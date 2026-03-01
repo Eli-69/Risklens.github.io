@@ -19,5 +19,5 @@ export default defineConfig({
 
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
-  base: '/Risklens.github.io/'
+  base: '/Risklens.github.io/',
 })
