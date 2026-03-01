@@ -10,7 +10,7 @@ export function Navigation() {
           
           {/* Logo + Site Name */}
           <Link to="/" className="flex items-center gap-2">
-            <img src={Logo} alt="RiskLens Logo" className="h-8 w-auto" />
+            <img src={Logo} alt="RiskLens Logo" className="h-33 w-auto" />
             <span className="text-xl font-semibold text-gray-900">RiskLens</span>
           </Link>
 
