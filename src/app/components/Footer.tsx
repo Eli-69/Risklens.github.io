@@ -1,10 +1,5 @@
 import { Send, Instagram, Twitter, Youtube, Dribbble } from 'lucide-react';
 import { useState } from 'react';
-//import logoImage from 'figma:asset/5359972e9e4260f6bcd141dfc6d216542cc5799c.png';
-
-// Add a placeholder for the logo
-import Logo from "../assets/logo.svg?react";
-<Logo className="h-10 w-auto text-white" /> 
 
 export function Footer() {
   const [email, setEmail] = useState('');
@@ -16,7 +11,8 @@ export function Footer() {
           {/* Logo and Copyright */}
           <div>
             <div className="flex items-center gap-2 mb-6">
-              <img src={logoImage} alt="RiskLens Logo" className="h-10 w-auto" />
+              {/* Use public folder path directly */}
+              <img src="/images/logo.svg" alt="RiskLens Logo" className="h-10 w-auto" />
               <span className="text-xl font-semibold text-white">RiskLens</span>
             </div>
             
