@@ -1,6 +1,6 @@
 import { Button } from './ui/button';
 import { Link } from 'react-router';
-import { ReactComponent as Logo } from '../../assets/logo.svg'; // Import your logo
+import Logo from '../../assets/logo.svg'; // SVG as a regular image
 
 export function Navigation() {
   return (
@@ -10,7 +10,7 @@ export function Navigation() {
           
           {/* Logo + Site Name */}
           <Link to="/" className="flex items-center gap-2">
-            <Logo className="h-8 w-8" />
+            <img src={Logo} alt="RiskLens Logo" className="h-8 w-auto" />
             <span className="text-xl font-semibold text-gray-900">RiskLens</span>
           </Link>
 
