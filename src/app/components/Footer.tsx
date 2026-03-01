@@ -3,7 +3,7 @@ import { useState } from 'react';
 //import logoImage from 'figma:asset/5359972e9e4260f6bcd141dfc6d216542cc5799c.png';
 
 // Add a placeholder for the logo
-const logoImage = "https://via.placeholder.com/100x50?text=RiskLens";
+import logoImage from "..\assets\logo.png";
 
 export function Footer() {
   const [email, setEmail] = useState('');
