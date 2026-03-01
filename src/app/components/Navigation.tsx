@@ -1,6 +1,6 @@
 import { Button } from './ui/button';
 import { Link } from 'react-router';
-import Logo from '../../assets/logo.svg'; // SVG as a regular image
+import Logo from '../../assets/logo.svg'; // Use your cleaned SVG or transparent PNG
 
 export function Navigation() {
   return (
@@ -9,8 +9,12 @@ export function Navigation() {
         <div className="flex items-center justify-between h-16">
           
           {/* Logo + Site Name */}
-          <Link to="/" className="flex items-center gap-2">
-            <img src={Logo} alt="RiskLens Logo" className="h-33 w-auto" />
+          <Link to="/" className="flex items-center gap-1"> {/* reduced gap for tight alignment */}
+            <img
+              src={Logo}
+              alt="RiskLens Logo"
+              className="h-12 w-auto transition-transform duration-300 hover:scale-110"
+            />
             <span className="text-xl font-semibold text-gray-900">RiskLens</span>
           </Link>
 
