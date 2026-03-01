@@ -1,6 +1,9 @@
 import { Send, Instagram, Twitter, Youtube, Dribbble } from 'lucide-react';
 import { useState } from 'react';
-import logoImage from 'figma:asset/5359972e9e4260f6bcd141dfc6d216542cc5799c.png';
+//import logoImage from 'figma:asset/5359972e9e4260f6bcd141dfc6d216542cc5799c.png';
+
+// Add a placeholder for the logo
+const logoImage = "https://via.placeholder.com/100x50?text=RiskLens";
 
 export function Footer() {
   const [email, setEmail] = useState('');

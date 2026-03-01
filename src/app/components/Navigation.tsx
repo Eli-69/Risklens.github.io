@@ -1,6 +1,9 @@
 import { Button } from './ui/button';
-import logoImage from 'figma:asset/5359972e9e4260f6bcd141dfc6d216542cc5799c.png';
+//import logoImage from 'figma:asset/5359972e9e4260f6bcd141dfc6d216542cc5799c.png';
 import { Link } from 'react-router';
+
+// Add a placeholder for the logo
+const logoImage = "https://via.placeholder.com/100x50?text=RiskLens";
 
 export function Navigation() {
   return (
