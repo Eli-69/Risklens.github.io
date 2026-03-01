@@ -2,12 +2,16 @@ import { Navigation } from '../components/Navigation';
 import { Footer } from '../components/Footer';
 import { Button } from '../components/ui/button';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
+//import illustration from 'figma:asset/c17c99e05356c9e3f54e815b5fe5f3a18f5a00fa.png';
+//import screenshot1 from 'figma:asset/acc15ab6cd93f590e0fc9fdce7bb7c3db7a15729.png';
+//import browserBar from 'figma:asset/daf35ebd56601a213a07784119c0f2985cbd2a9c.png';
+//import dashboardView from 'figma:asset/c4e6a8593853acce5acc3dcca8546c97d954c90b.png';
+//import fullWebsiteView from 'figma:asset/6bcd30ca2cf6ca17a5b7e6a982a99c85907d0026.png';
 
-
-const browserBar = "https://via.placeholder.com/800x200?text=Browser+Toolbar+Screenshot";
-const screenshot1 = "https://via.placeholder.com/800x400?text=RiskLens+Popup+Screenshot";
-const dashboardView = "https://via.placeholder.com/800x400?text=Dashboard+View";
-const fullWebsiteView = "https://via.placeholder.com/800x400?text=Full+Website+View";
+import browserBar from "../../assets/SC1.png";
+import screenshot1 from "../../assets/SC2.png";
+import dashboardView from "../../assets/SC3.png";
+import fullWebsiteView from "../../assets/SC4.png";
 
 export function HowItWorks() {
   return (
