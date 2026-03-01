@@ -3,7 +3,8 @@ import { useState } from 'react';
 //import logoImage from 'figma:asset/5359972e9e4260f6bcd141dfc6d216542cc5799c.png';
 
 // Add a placeholder for the logo
-import logoImage from "../assets/logo.png";
+import Logo from "../assets/logo.svg?react";
+<Logo className="h-10 w-auto text-white" /> 
 
 export function Footer() {
   const [email, setEmail] = useState('');
