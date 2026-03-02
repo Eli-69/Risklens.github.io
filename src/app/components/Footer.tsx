@@ -1,5 +1,6 @@
 import { Send, Instagram, Twitter, Youtube, Dribbble } from 'lucide-react';
 import { useState } from 'react';
+import Logo from '../../assets/logo.svg'; // Import your logo as a URL
 
 export function Footer() {
   const [email, setEmail] = useState('');
@@ -8,11 +9,11 @@ export function Footer() {
     <footer className="bg-[#2c3e4f] text-gray-300 py-12">
       <div className="container mx-auto px-6">
         <div className="grid md:grid-cols-5 gap-12">
+          
           {/* Logo and Copyright */}
           <div>
             <div className="flex items-center gap-2 mb-6">
-              {/* Use public folder path directly */}
-              <img src="/images/logo.svg" alt="RiskLens Logo" className="h-10 w-auto" />
+              <img src={Logo} alt="RiskLens Logo" className="h-10 w-auto" /> {/* SVG as <img> */}
               <span className="text-xl font-semibold text-white">RiskLens</span>
             </div>
             
