@@ -8,6 +8,7 @@ import { useNavigate, Link } from 'react-router';
 
 export function Hero() {
   const [url, setUrl] = useState('');
+  const [isPaused, setIsPaused] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const navigate = useNavigate();
 
@@ -30,12 +31,15 @@ export function Hero() {
   };
 
   // Auto-rotate slides every 15 seconds
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % 3);
-    }, 15000);
-    return () => clearInterval(timer);
-  }, []);
+useEffect(() => {
+  if (isPaused) return; // ⛔ stop rotating when paused
+
+  const timer = setInterval(() => {
+    setCurrentSlide((prev) => (prev + 1) % 3);
+  }, 15000);
+
+  return () => clearInterval(timer);
+}, [isPaused]);
 
   return (
     <section className="relative overflow-hidden bg-gray-50 pt-20 pb-16">
@@ -74,7 +78,12 @@ export function Hero() {
                       type="text" 
                       placeholder="Check your sites" 
                       value={url}
-                      onChange={(e) => setUrl(e.target.value)}
+                      onFocus={() => setIsPaused(true)}   // 🛑 pause
+                      // onBlur={() => setIsPaused(false)}  // ▶️ resume (optional)
+                      onChange={(e) => {
+                        setIsPaused(true);              // 🛑 pause while typing
+                        setUrl(e.target.value);
+                      }}
                       onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
                       className="w-full h-14 pl-6 pr-14 rounded-full bg-green-600 border-0 text-white placeholder:text-white/80 text-base"
                     />
