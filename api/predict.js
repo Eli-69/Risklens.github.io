@@ -12,10 +12,11 @@ export default async function handler(req, res) {
   try {
     // 1. Check cache via API Gateway (GET)
     const getResponse = await fetch(
-      `${process.env.API_GET_URL}?input=${encodeURIComponent(input)}`
+      `${process.env.API_GET_URL}?entityType=product&id=${encodeURIComponent(input)}`
     );
 
     const cachedData = await getResponse.json();
+    console.log("GET response:", cachedData);
 
     if (cachedData && cachedData.result) {
       return res.status(200).json({
@@ -34,25 +35,29 @@ export default async function handler(req, res) {
     });
 
     const mlData = await mlResponse.json();
+    console.log("ML response:", mlData);
 
     // 3. Store result via API Gateway (POST)
-    await fetch(process.env.API_POST_URL, {
+    const postResponse = await fetch(process.env.API_POST_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        input,
+        entityType: "product",
+        id: input,
         result: mlData,
         createdAt: Date.now(),
       }),
     });
 
+    const postData = await postResponse.json();
+    console.log("POST response:", postData);
+
     return res.status(200).json({
       source: "ml",
       result: mlData,
     });
-
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: "Server error" });
