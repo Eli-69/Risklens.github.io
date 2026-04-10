@@ -10,17 +10,22 @@ export default async function handler(req, res) {
   }
 
   try {
-    const fetchUrl = `${process.env.API_GET_URL}?entityType=product&id=${encodeURIComponent(input)}`;
+    const normalizedId = input.replace(/^https?:\/\//, "").replace(/\/$/, "");
+
+    const fetchUrl =
+      `${process.env.API_GET_URL}?entityType=WEBSITE&id=${encodeURIComponent(normalizedId)}&dataType=PROFILE`;
+
     const getResponse = await fetch(fetchUrl);
     const cachedData = await getResponse.json();
 
-    if (cachedData && Array.isArray(cachedData.data) && cachedData.data.length > 0) {
+    if (cachedData && cachedData.data && !Array.isArray(cachedData.data)) {
       return res.status(200).json({
         source: "cache",
-        result: cachedData.data[0].result,
-        debug: {
-          fetchUrl,
-          fetchResponse: cachedData
+        result: {
+          riskScore: cachedData.data.riskScore,
+          socialMediaScore: cachedData.data.socialMediaScore,
+          userId: cachedData.data.userId,
+          raw: cachedData.data
         }
       });
     }
@@ -37,16 +42,20 @@ export default async function handler(req, res) {
 
     const mlData = await mlResponse.json();
 
+    const riskScore = Math.round((mlData.score ?? 0) * 100);
+
     const saveResponse = await fetch(process.env.API_POST_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        entityType: "product",
-        id: input,
-        result: mlData,
-        createdAt: Date.now(),
+        entityType: "WEBSITE",
+        id: normalizedId,
+        dataType: "PROFILE",
+        riskScore,
+        socialMediaScore: 0,
+        userId: "demo-user"
       }),
     });
 
