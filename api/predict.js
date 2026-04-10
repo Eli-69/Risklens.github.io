@@ -10,16 +10,18 @@ export default async function handler(req, res) {
   }
 
   try {
-    const getResponse = await fetch(
-      `${process.env.API_GET_URL}?entityType=product&id=${encodeURIComponent(input)}`
-    );
-
+    const fetchUrl = `${process.env.API_GET_URL}?entityType=product&id=${encodeURIComponent(input)}`;
+    const getResponse = await fetch(fetchUrl);
     const cachedData = await getResponse.json();
 
     if (cachedData && Array.isArray(cachedData.data) && cachedData.data.length > 0) {
       return res.status(200).json({
         source: "cache",
         result: cachedData.data[0].result,
+        debug: {
+          fetchUrl,
+          fetchResponse: cachedData
+        }
       });
     }
 
@@ -35,7 +37,7 @@ export default async function handler(req, res) {
 
     const mlData = await mlResponse.json();
 
-    await fetch(process.env.API_POST_URL, {
+    const saveResponse = await fetch(process.env.API_POST_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -48,9 +50,17 @@ export default async function handler(req, res) {
       }),
     });
 
+    const saveText = await saveResponse.text();
+
     return res.status(200).json({
       source: "ml",
       result: mlData,
+      debug: {
+        fetchUrl,
+        fetchResponse: cachedData,
+        saveStatus: saveResponse.status,
+        saveResponse: saveText
+      }
     });
   } catch (error) {
     console.error(error);
