@@ -1,4 +1,4 @@
-import { Navigation } from '../components/Header';
+import { Navigation } from '../components/Navigation';
 import { Footer } from '../components/Footer';
 import { Shield, TrendingUp, Star, MessageSquare, Globe, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router';
