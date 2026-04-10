@@ -6,53 +6,115 @@ import { Star, ExternalLink, MessageSquare } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { saveScanResult } from '../services/scanService';
 
 export function SecurityInsights() {
   const { domain } = useParams();
   const [userName, setUserName] = useState('');
   const [userReview, setUserReview] = useState('');
   const [userRating, setUserRating] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [analysisData, setAnalysisData] = useState<any>(null);
 
-  // Mock data - in a real app, this would come from your AI analysis
-  const siteData = {
-    domain: domain || 'amazon.com',
-    logo: 'https://logo.clearbit.com/' + (domain || 'amazon.com'),
-    riskScore: 12,
-    securityHistory: {
-      dataBreaches: 'Dec 4',
-      serverCrash: 'Aug 22',
+  useEffect(() => {
+  async function loadInsights() {
+    if (!domain) return;
+
+    try {
+      setLoading(true);
+      setError('');
+
+      const fullUrl = domain.startsWith('http') ? domain : `https://${domain}`;
+
+      const response = await fetch('/api/predict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          input: fullUrl,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to analyze site');
+      }
+
+      setAnalysisData(data);
+
+      try {
+        await saveScanResult({
+          url: fullUrl,
+          score: data.result.score ?? data.result.riskScore ?? 0,
+          verdict: data.result.verdict ?? 'unknown',
+          source: data.source,
+        });
+      } catch (saveError) {
+        console.log('Scan not saved:', saveError);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  loadInsights();
+}, [domain]);
+
+const siteData = {
+  domain: domain || 'example.com',
+  logo: 'https://logo.clearbit.com/' + (domain || 'example.com'),
+  riskScore: Math.round(
+    (analysisData?.result?.score ?? analysisData?.result?.riskScore ?? 0) *
+      ((analysisData?.result?.score ?? null) !== null ? 100 : 1)
+  ),
+  securityHistory: {
+    dataBreaches: 'No recent breach data',
+    serverCrash: 'No server crash data',
+  },
+  detailedAnalysis: {
+    security: {
+      score: Math.round(
+        (analysisData?.result?.score ?? analysisData?.result?.riskScore ?? 0) *
+          ((analysisData?.result?.score ?? null) !== null ? 100 : 1)
+      ),
+      text: analysisData?.result?.verdict
+        ? `Verdict: ${analysisData.result.verdict}`
+        : 'No security details available yet.',
     },
-    detailedAnalysis: {
-      security: {
-        score: 12,
-        text: 'Good HTTPS implementation. TLS 1.3 with optimal ciphers detected.',
-      },
-      phishing: {
-        score: 5,
-        text: 'Brand-blind domain (EPC service) with added phishing header.',
-      },
-      tracking: {
-        score: 55,
-        text: 'Probable Facebook pixels and fingerprinting scripts.',
-      },
-      aiFlags: {
-        score: 8,
-        text: 'No suspicious patterns. High transparency.',
-      },
+    phishing: {
+      score: Math.round((analysisData?.result?.prob_phishing ?? 0) * 100),
+      text:
+        analysisData?.result?.why_flagged?.length > 0
+          ? analysisData.result.why_flagged.join(', ')
+          : 'No major phishing signals detected.',
     },
-    trustedSites: [
-      'https://www.wikipedia.org',
-      'https://archive.org',
-      'https://www.gutenberg.org',
-      'https://www.khanacademy.org',
-      'https://www.nasa.gov',
-      'https://www.nih.gov',
-      'https://www.data.gov',
-      'https://www.cbcc.com/news',
-      'https://www.duolingo.com',
-    ],
-  };
+    tracking: {
+      score: 0,
+      text: 'Tracking analysis not connected yet.',
+    },
+    aiFlags: {
+      score: 0,
+      text: 'AI flag details not connected yet.',
+    },
+  },
+  trustedSites: [
+    'https://www.wikipedia.org',
+    'https://archive.org',
+    'https://www.gutenberg.org',
+    'https://www.khanacademy.org',
+    'https://www.nasa.gov',
+    'https://www.nih.gov',
+    'https://www.data.gov',
+    'https://www.cbc.com/news',
+    'https://www.duolingo.com',
+  ],
+};
 
   // Determine risk score color
   const getRiskScoreColor = (score: number) => {
@@ -69,6 +131,30 @@ export function SecurityInsights() {
     setUserReview('');
     setUserRating(0);
   };
+
+  if (loading) {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      <div className="container mx-auto px-6 py-12">
+        <p className="text-lg text-gray-700">Analyzing site...</p>
+      </div>
+      <Footer />
+    </div>
+  );
+}
+
+if (error) {
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <Navigation />
+      <div className="container mx-auto px-6 py-12">
+        <p className="text-lg text-red-600">{error}</p>
+      </div>
+      <Footer />
+    </div>
+  );
+}
 
   return (
     <div className="min-h-screen bg-gray-50">
