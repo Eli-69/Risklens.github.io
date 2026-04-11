@@ -3,7 +3,7 @@ import { Home } from "./pages/Home";
 import { SecurityInsights } from "./pages/SecurityInsights";
 import { HowItWorks } from "./pages/HowItWorks";
 import { Login } from "./pages/Login";
-//import { Dashboard } from "./pages/Dashboard";
+import { Dashboard } from "./pages/Dashboard";
 import { ProtectedRoute } from "./components/ProtectedRoute";
 import { WhosAtRisk } from "./pages/WhosAtRisk";
 import { ReportSite } from "./pages/ReportSite";
