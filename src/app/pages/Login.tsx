@@ -3,7 +3,7 @@ import { Footer } from '../components/Footer';
 import { Button } from '../components/ui/button';
 import { useState } from 'react';
 import { login, signup, loginWithGoogle } from '../services/authService';
-import { Link, useSearchParams } from "react-router";
+import { Link, useSearchParams, useNavigate } from "react-router";
 
 export function Login() {
   const [searchParams] = useSearchParams();
@@ -12,6 +12,7 @@ export function Login() {
     searchParams.get("mode") === "signup"
   );
 
+  const navigate = useNavigate();
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -36,7 +37,7 @@ export function Login() {
       // 🔥 SIGN UP FLOW
       if (isSignUp) {
         await signup(email, password);
-        window.location.href = '/verify-account';
+        navigate('/verify-account');
         return;
       }
 
@@ -44,11 +45,11 @@ export function Login() {
       const user = await login(email, password);
 
       if (!user.emailVerified) {
-        window.location.href = '/verify-account';
+        navigate('/verify-account');
         return;
       }
 
-      window.location.href = '/dashboard';
+      navigate('/dashboard');
 
     } catch (err: any) {
       console.error('Auth error:', err);
@@ -65,7 +66,7 @@ export function Login() {
       setMessage('');
 
       await loginWithGoogle();
-      window.location.href = '/dashboard';
+      navigate('/dashboard');
 
     } catch (err: any) {
       console.error('Google login error:', err);
