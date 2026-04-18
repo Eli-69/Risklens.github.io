@@ -29,7 +29,16 @@ export async function saveScanResult(result: ScanResult) {
   });
 }
 
-export async function getUserScans() {
+export async function getUserScans(): Promise<
+  Array<{
+    id: string;
+    url: string;
+    score: number;
+    verdict: string;
+    source?: string;
+    checkedAt?: any;
+  }>
+> {
   if (!auth.currentUser) {
     throw new Error("User not logged in");
   }
@@ -44,5 +53,12 @@ export async function getUserScans() {
   return snap.docs.map((doc) => ({
     id: doc.id,
     ...doc.data(),
-  }));
+  })) as Array<{
+    id: string;
+    url: string;
+    score: number;
+    verdict: string;
+    source?: string;
+    checkedAt?: any;
+  }>;
 }
