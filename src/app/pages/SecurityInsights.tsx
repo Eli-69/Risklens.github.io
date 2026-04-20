@@ -20,76 +20,81 @@ export function SecurityInsights() {
   const [analysisData, setAnalysisData] = useState<any>(null);
 
   useEffect(() => {
-    async function loadInsights() {
-      if (!domain) return;
+  async function loadInsights() {
+    if (!domain) return;
+
+    try {
+      setLoading(true);
+      setError('');
+
+      const decodedInput = decodeURIComponent(domain);
+      const fullUrl = decodedInput.startsWith('http')
+        ? decodedInput
+        : `https://${decodedInput}`;
+
+      console.log('FULL URL SENT:', fullUrl);
+
+      const response = await fetch('/api/predict', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          input: fullUrl,
+        }),
+      });
+
+      const data = await response.json();
+      console.log('PREDICT RESPONSE:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to analyze site');
+      }
+
+      setAnalysisData(data);
 
       try {
-        setLoading(true);
-        setError('');
+        const savedScore =
+          typeof data.result?.score === 'number'
+            ? data.result.score
+            : typeof data.result?.riskScore === 'number'
+              ? data.result.riskScore
+              : 0;
 
-        const fullUrl = domain.startsWith('http') ? domain : `https://${domain}`;
+        const savedVerdict =
+          data.result?.verdict ??
+          (savedScore <= 1
+            ? savedScore * 100 > 60
+              ? 'warning'
+              : savedScore * 100 > 30
+                ? 'moderate'
+                : 'legitimate'
+            : savedScore > 60
+              ? 'warning'
+              : savedScore > 30
+                ? 'moderate'
+                : 'legitimate');
 
-        const response = await fetch('/api/predict', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            input: fullUrl,
-          }),
+        await saveScanResult({
+          url: fullUrl,
+          score: savedScore,
+          verdict: savedVerdict,
+          source: data.source,
         });
-
-        const data = await response.json();
-        console.log('PREDICT RESPONSE:', data);
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to analyze site');
+      } catch (saveError: any) {
+        if (saveError?.message !== 'User not logged in') {
+          console.log('Scan not saved:', saveError);
         }
-
-        setAnalysisData(data);
-
-        try {
-          const savedScore =
-            typeof data.result?.score === 'number'
-              ? data.result.score
-              : typeof data.result?.riskScore === 'number'
-                ? data.result.riskScore
-                : 0;
-
-          const savedVerdict =
-            data.result?.verdict ??
-            (savedScore <= 1
-              ? savedScore * 100 > 60
-                ? 'warning'
-                : savedScore * 100 > 30
-                  ? 'moderate'
-                  : 'legitimate'
-              : savedScore > 60
-                ? 'warning'
-                : savedScore > 30
-                  ? 'moderate'
-                  : 'legitimate');
-
-          await saveScanResult({
-            url: fullUrl,
-            score: savedScore,
-            verdict: savedVerdict,
-            source: data.source,
-          });
-        } catch (saveError: any) {
-          if (saveError?.message !== 'User not logged in') {
-            console.log('Scan not saved:', saveError);
-          }
-        }
-      } catch (err: any) {
-        setError(err.message || 'Something went wrong');
-      } finally {
-        setLoading(false);
       }
+    } catch (err: any) {
+      setError(err.message || 'Something went wrong');
+    } finally {
+      setLoading(false);
     }
+  }
 
-    loadInsights();
-  }, [domain]);
+  loadInsights();
+}, [domain]);
 
   const getRiskScoreColor = (score: number) => {
     if (score <= 30) return 'text-green-600';
@@ -164,8 +169,12 @@ export function SecurityInsights() {
       ? ['Loaded from cached scan result']
       : [];
 
+  const displayDomain = fullUrl
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '');
+
   const siteData = {
-    domain: domain || 'example.com',
+    domain: displayDomain || 'example.com',
     logo: 'https://logo.clearbit.com/' + (domain || 'example.com'),
     riskScore,
     verdict,
