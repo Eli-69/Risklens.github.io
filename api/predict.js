@@ -10,23 +10,50 @@ export default async function handler(req, res) {
   }
 
   try {
-    const normalizedId = input.replace(/^https?:\/\//, "").replace(/\/$/, "");
-
-    const fetchUrl =
-      `${process.env.API_GET_URL}?entityType=WEBSITE&id=${encodeURIComponent(normalizedId)}&dataType=PROFILE`;
+    const normalizedUrl = input.trim();
+    const fetchUrl = `${process.env.API_GET_URL}?entityType=product&id=${encodeURIComponent(normalizedUrl)}`;
 
     const getResponse = await fetch(fetchUrl);
     const cachedData = await getResponse.json();
 
-    if (cachedData && cachedData.data && !Array.isArray(cachedData.data)) {
+    if (
+      cachedData &&
+      Array.isArray(cachedData.data) &&
+      cachedData.data.length > 0
+    ) {
+      const cachedItem = cachedData.data[0];
+
+      // Best case: full model result was stored
+      if (cachedItem.modelResult) {
+        return res.status(200).json({
+          source: "cache",
+          result: cachedItem.modelResult,
+        });
+      }
+
+      // Fallback for old cache entries
+      const riskScore =
+        typeof cachedItem.riskScore === "number" ? cachedItem.riskScore : 0;
+
+      const normalizedScore = riskScore > 1 ? riskScore / 100 : riskScore;
+
+      const verdict =
+        riskScore > 60
+          ? "warning"
+          : riskScore > 30
+            ? "moderate"
+            : "legitimate";
+
       return res.status(200).json({
         source: "cache",
         result: {
-          riskScore: cachedData.data.riskScore,
-          socialMediaScore: cachedData.data.socialMediaScore,
-          userId: cachedData.data.userId,
-          raw: cachedData.data
-        }
+          score: normalizedScore,
+          prob_phishing: normalizedScore,
+          threshold: 0.8,
+          url: normalizedUrl,
+          verdict,
+          why_flagged: ["Loaded from cached scan result"],
+        },
       });
     }
 
@@ -36,40 +63,36 @@ export default async function handler(req, res) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        url: input,
+        url: normalizedUrl,
       }),
     });
 
     const mlData = await mlResponse.json();
 
-    const riskScore = Math.round((mlData.score ?? 0) * 100);
-
-    const saveResponse = await fetch(process.env.API_POST_URL, {
+    await fetch(process.env.API_POST_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        entityType: "WEBSITE",
-        id: normalizedId,
+        entityType: "product",
+        id: normalizedUrl,
         dataType: "PROFILE",
-        riskScore,
+        riskScore:
+          typeof mlData.score === "number"
+            ? mlData.score <= 1
+              ? Math.round(mlData.score * 100)
+              : Math.round(mlData.score)
+            : 0,
         socialMediaScore: 0,
-        userId: "demo-user"
+        userId: "model-scan",
+        modelResult: mlData,
       }),
     });
-
-    const saveText = await saveResponse.text();
 
     return res.status(200).json({
       source: "ml",
       result: mlData,
-      debug: {
-        fetchUrl,
-        fetchResponse: cachedData,
-        saveStatus: saveResponse.status,
-        saveResponse: saveText
-      }
     });
   } catch (error) {
     console.error(error);
