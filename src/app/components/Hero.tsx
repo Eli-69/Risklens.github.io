@@ -10,36 +10,50 @@ export function Hero() {
   const [url, setUrl] = useState('');
   const [isPaused, setIsPaused] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
   const navigate = useNavigate();
 
-  const handleAnalyze = () => {
-    if (url) {
-      // Extract domain from URL
-      let domain = url;
-      try {
-        // Remove protocol if present
-        domain = domain.replace(/^https?:\/\//, '');
-        // Remove www. if present
-        domain = domain.replace(/^www\./, '');
-        // Remove trailing slash and path
-        domain = domain.split('/')[0];
-      } catch (e) {
-        // Use as-is if parsing fails
+  const handleAnalyze = async () => {
+    if (!url.trim()) return;
+
+    try {
+      setSearchLoading(true);
+      setSearchError('');
+
+      const response = await fetch('/api/resolve-site', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ input: url }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.found || !data.resolvedUrl) {
+        setSearchError('Could not find a real website from that search.');
+        return;
       }
-      navigate(`/insights/${domain}`);
+
+      navigate(`/insights/${encodeURIComponent(data.resolvedUrl)}`);
+    } catch (err) {
+      console.error('Resolve site error:', err);
+      setSearchError('Something went wrong while checking that site.');
+    } finally {
+      setSearchLoading(false);
     }
   };
 
-  // Auto-rotate slides every 15 seconds
-useEffect(() => {
-  if (isPaused) return; // ⛔ stop rotating when paused
+  useEffect(() => {
+    if (isPaused) return;
 
-  const timer = setInterval(() => {
-    setCurrentSlide((prev) => (prev + 1) % 3);
-  }, 15000);
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % 3);
+    }, 15000);
 
-  return () => clearInterval(timer);
-}, [isPaused]);
+    return () => clearInterval(timer);
+  }, [isPaused]);
 
   return (
     <section className="relative overflow-hidden bg-gray-50 pt-20 pb-16">
@@ -54,7 +68,6 @@ useEffect(() => {
               transition={{ duration: 0.5 }}
             >
               <div className="grid lg:grid-cols-2 gap-16 items-center">
-                {/* Left Content */}
                 <div>
                   <h1 className="text-5xl font-bold leading-tight mb-6 text-gray-900">
                     Know the risks.
@@ -62,41 +75,50 @@ useEffect(() => {
                     <span className="text-green-600">Browse with confidence.</span>
                   </h1>
                   <p className="text-gray-600 mb-8 text-lg">
-                    Check if you websites are safe
+                    Check if your websites are safe
                   </p>
 
-                  {/* Add to Browser Button */}
-                  <Button 
-                    className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mb-6"
-                  >
+                  <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mb-6">
                     Add to browser
                   </Button>
 
-                  {/* URL Search Bar */}
                   <div className="relative">
-                    <Input 
-                      type="text" 
-                      placeholder="Check your sites" 
+                    <Input
+                      type="text"
+                      placeholder="Check your sites"
                       value={url}
-                      onFocus={() => setIsPaused(true)}   // 🛑 pause
-                      // onBlur={() => setIsPaused(false)}  // ▶️ resume (optional)
+                      onFocus={() => setIsPaused(true)}
                       onChange={(e) => {
-                        setIsPaused(true);              // 🛑 pause while typing
+                        setIsPaused(true);
                         setUrl(e.target.value);
+                        if (searchError) setSearchError('');
                       }}
                       onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
                       className="w-full h-14 pl-6 pr-14 rounded-full bg-green-600 border-0 text-white placeholder:text-white/80 text-base"
                     />
-                    <button 
+                    <button
+                      type="button"
                       onClick={handleAnalyze}
-                      className="absolute right-5 top-1/2 -translate-y-1/2 text-white hover:text-white/80 transition-colors"
+                      disabled={searchLoading}
+                      className="absolute right-5 top-1/2 -translate-y-1/2 text-white hover:text-white/80 transition-colors disabled:opacity-60"
                     >
                       <Search className="size-5" />
                     </button>
                   </div>
+
+                  {searchError && (
+                    <p className="mt-3 text-sm text-red-600">
+                      {searchError}
+                    </p>
+                  )}
+
+                  {searchLoading && (
+                    <p className="mt-3 text-sm text-gray-600">
+                      Checking website...
+                    </p>
+                  )}
                 </div>
 
-                {/* Right Image */}
                 <div className="relative">
                   <ImageWithFallback
                     src="https://images.unsplash.com/photo-1758874573279-2709f2ce5d73?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjB3b3JraW5nJTIwbGFwdG9wJTIwYnJvd3Npbmd8ZW58MXx8fHwxNzcxMDMwODk5fDA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral"
@@ -117,7 +139,6 @@ useEffect(() => {
               transition={{ duration: 0.5 }}
             >
               <div className="grid lg:grid-cols-2 gap-16 items-center">
-                {/* Left Content */}
                 <div>
                   <h1 className="text-5xl font-bold leading-tight mb-6 text-gray-900">
                     How to use
@@ -135,7 +156,7 @@ useEffect(() => {
                       </div>
                       <div>
                         <h3 className="font-semibold text-gray-900 mb-2">Install the Extension</h3>
-                        <p className="text-gray-600">Download RiskLens from your browser's extension store</p>
+                        <p className="text-gray-600">Download RiskLens from your browser&apos;s extension store</p>
                       </div>
                     </div>
 
@@ -161,15 +182,13 @@ useEffect(() => {
                   </div>
 
                   <div className="flex gap-4">
-                    <Button 
-                      className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mt-8"
-                    >
+                    <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mt-8">
                       <Download className="mr-2 size-4" />
                       Add to Browser
                     </Button>
-                    
+
                     <Link to="/how-it-works">
-                      <Button 
+                      <Button
                         variant="outline"
                         className="border-green-600 text-green-600 hover:bg-green-50 rounded-full px-8 h-12 mt-8"
                       >
@@ -180,7 +199,6 @@ useEffect(() => {
                   </div>
                 </div>
 
-                {/* Right Image */}
                 <div className="relative">
                   <ImageWithFallback
                     src="https://images.unsplash.com/photo-1551650975-87deedd944c3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxicm93c2VyJTIwZXh0ZW5zaW9uJTIwY2hyb21lfGVufDF8fHx8MTc3MTA0Mzk5OXww&ixlib=rb-4.1.0&q=80&w=1080"
@@ -201,12 +219,11 @@ useEffect(() => {
               transition={{ duration: 0.5 }}
             >
               <div className="grid lg:grid-cols-2 gap-16 items-center">
-                {/* Left Content */}
                 <div>
                   <h1 className="text-5xl font-bold leading-tight mb-6 text-gray-900">
                     Connect with us
                     <br />
-                    <span className="text-green-600">We're here to help</span>
+                    <span className="text-green-600">We&apos;re here to help</span>
                   </h1>
                   <p className="text-gray-600 mb-8 text-lg">
                     Have questions or feedback? Get in touch with our team
@@ -234,16 +251,11 @@ useEffect(() => {
                     </div>
                   </div>
 
-                  <Button 
-                    className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12"
-                  >
-                    <Link to="/help">
-                      Contact Support
-                    </Link>
+                  <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12">
+                    <Link to="/help">Contact Support</Link>
                   </Button>
                 </div>
 
-                {/* Right Image */}
                 <div className="relative">
                   <ImageWithFallback
                     src="https://images.unsplash.com/photo-1553877522-43269d4ea984?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjdXN0b21lciUyMHN1cHBvcnQlMjB0ZWFtfGVufDF8fHx8MTc3MTA0Mzk5OXww&ixlib=rb-4.1.0&q=80&w=1080"
@@ -256,7 +268,6 @@ useEffect(() => {
           )}
         </AnimatePresence>
 
-        {/* Pagination Dots */}
         <div className="flex justify-center gap-2 mt-12">
           <button
             onClick={() => setCurrentSlide(0)}
