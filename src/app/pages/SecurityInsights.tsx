@@ -11,12 +11,38 @@ import { saveScanResult } from '../services/scanService';
 export function SecurityInsights() {
   const { domain } = useParams();
 
-  const decodedInput = domain ? decodeURIComponent(domain) : '';
-  const fullUrl = decodedInput
-    ? decodedInput.startsWith('http')
-      ? decodedInput
-      : `https://${decodedInput}`
-    : '';
+  const decodedInput = domain ? decodeURIComponent(domain).trim() : '';
+
+  function normalizeUrl(input: string) {
+    if (!input) return '';
+
+    let url = input.startsWith('http') ? input : `https://${input}`;
+
+    try {
+      const parsed = new URL(url);
+
+      if (
+        !parsed.hostname.startsWith('www.') &&
+        parsed.hostname.split('.').length === 2
+      ) {
+        parsed.hostname = `www.${parsed.hostname}`;
+      }
+
+      if (!parsed.pathname || parsed.pathname === '') {
+        parsed.pathname = '/';
+      }
+
+      return parsed.toString();
+    } catch {
+      return url;
+    }
+  }
+
+  const fullUrl = normalizeUrl(decodedInput);
+
+  const displayDomain = fullUrl
+    ? fullUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
+    : 'example.com';
 
   const [userName, setUserName] = useState('');
   const [userReview, setUserReview] = useState('');
@@ -28,7 +54,7 @@ export function SecurityInsights() {
 
   useEffect(() => {
     async function loadInsights() {
-      if (!domain || !fullUrl) return;
+      if (!fullUrl) return;
 
       try {
         setLoading(true);
@@ -65,17 +91,11 @@ export function SecurityInsights() {
 
           const savedVerdict =
             data.result?.verdict ??
-            (savedScore <= 1
-              ? savedScore * 100 > 60
-                ? 'warning'
-                : savedScore * 100 > 30
-                  ? 'moderate'
-                  : 'legitimate'
-              : savedScore > 60
-                ? 'warning'
-                : savedScore > 30
-                  ? 'moderate'
-                  : 'legitimate');
+            (savedScore > 60
+              ? 'warning'
+              : savedScore > 30
+                ? 'moderate'
+                : 'legitimate');
 
           await saveScanResult({
             url: fullUrl,
@@ -96,7 +116,7 @@ export function SecurityInsights() {
     }
 
     loadInsights();
-  }, [domain, fullUrl]);
+  }, [fullUrl]);
 
   const getRiskScoreColor = (score: number) => {
     if (score <= 30) return 'text-green-600';
@@ -150,12 +170,12 @@ export function SecurityInsights() {
         ? result.riskScore
         : 0;
 
-  const riskScore = rawScore <= 1 ? Math.round(rawScore * 100) : Math.round(rawScore);
+  const riskScore = Math.round(rawScore);
 
   const phishingScore =
     typeof result.prob_phishing === 'number'
       ? Math.round(result.prob_phishing * 100)
-      : riskScore;
+      : 0;
 
   const verdict =
     result.verdict ??
@@ -167,17 +187,15 @@ export function SecurityInsights() {
 
   const whyFlagged = Array.isArray(result.why_flagged)
     ? result.why_flagged
-    : analysisData?.source === 'cache'
-      ? ['Loaded from cached scan result']
-      : [];
-
-  const displayDomain = fullUrl
-    ? fullUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
-    : 'example.com';
+    : [];
 
   const siteData = {
-    domain: displayDomain || 'example.com',
-    logo: 'https://logo.clearbit.com/' + (displayDomain || 'example.com'),
+    domain: displayDomain,
+    logo: 'https://logo.clearbit.com/' + displayDomain,
+    securityHistory: {
+      dataBreaches: 'No recent breach data',
+      serverCrash: 'No recent crash data',
+    },
     riskScore,
     verdict,
     whyFlagged,
@@ -185,19 +203,14 @@ export function SecurityInsights() {
     detailedAnalysis: {
       security: {
         score: riskScore,
-        text:
-          analysisData?.source === 'cache'
-            ? `Cached result loaded. Risk score: ${riskScore}%`
-            : `Verdict: ${verdict}`,
+        text: `Verdict: ${verdict}`,
       },
       phishing: {
         score: phishingScore,
         text:
           whyFlagged.length > 0
             ? whyFlagged.join(', ')
-            : analysisData?.source === 'cache'
-              ? 'This cached result does not include detailed phishing reasons.'
-              : 'No major phishing signals detected.',
+            : 'No major phishing signals detected.',
       },
       tracking: {
         score: 0,
@@ -256,7 +269,7 @@ export function SecurityInsights() {
               <div className="space-y-4">
                 <div>
                   <div className={`text-3xl font-bold ${getRiskScoreColor(siteData.riskScore)} mb-1`}>
-                    Risk Score: {siteData.riskScore}%
+                    Risk Score: {siteData.riskScore}
                   </div>
 
                   <div className="text-gray-900 font-semibold">Verdict:</div>
@@ -284,12 +297,14 @@ export function SecurityInsights() {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-semibold text-gray-900">Security</h3>
-                    <span className="text-sm text-gray-600">{siteData.detailedAnalysis.security.score}%</span>
+                    <span className="text-sm text-gray-600">
+                      {siteData.detailedAnalysis.security.score}
+                    </span>
                   </div>
                   <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
                     <div
                       className={`h-full ${getBarColor(siteData.detailedAnalysis.security.score)}`}
-                      style={{ width: `${siteData.detailedAnalysis.security.score}%` }}
+                      style={{ width: `${Math.min(siteData.detailedAnalysis.security.score, 100)}%` }}
                     />
                   </div>
                   <p className="text-sm text-gray-600">{siteData.detailedAnalysis.security.text}</p>
@@ -298,12 +313,14 @@ export function SecurityInsights() {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-semibold text-gray-900">Phishing Signals</h3>
-                    <span className="text-sm text-gray-600">{siteData.detailedAnalysis.phishing.score}%</span>
+                    <span className="text-sm text-gray-600">
+                      {siteData.detailedAnalysis.phishing.score}%
+                    </span>
                   </div>
                   <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
                     <div
                       className={`h-full ${getBarColor(siteData.detailedAnalysis.phishing.score)}`}
-                      style={{ width: `${siteData.detailedAnalysis.phishing.score}%` }}
+                      style={{ width: `${Math.min(siteData.detailedAnalysis.phishing.score, 100)}%` }}
                     />
                   </div>
                   <p className="text-sm text-gray-600">{siteData.detailedAnalysis.phishing.text}</p>
@@ -312,12 +329,14 @@ export function SecurityInsights() {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-semibold text-gray-900">Tracking Risks</h3>
-                    <span className="text-sm text-gray-600">{siteData.detailedAnalysis.tracking.score}%</span>
+                    <span className="text-sm text-gray-600">
+                      {siteData.detailedAnalysis.tracking.score}%
+                    </span>
                   </div>
                   <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
                     <div
                       className={`h-full ${getBarColor(siteData.detailedAnalysis.tracking.score)}`}
-                      style={{ width: `${siteData.detailedAnalysis.tracking.score}%` }}
+                      style={{ width: `${Math.min(siteData.detailedAnalysis.tracking.score, 100)}%` }}
                     />
                   </div>
                   <p className="text-sm text-gray-600">{siteData.detailedAnalysis.tracking.text}</p>
@@ -326,26 +345,19 @@ export function SecurityInsights() {
                 <div>
                   <div className="flex justify-between items-center mb-2">
                     <h3 className="font-semibold text-gray-900">AI Flags</h3>
-                    <span className="text-sm text-gray-600">{siteData.detailedAnalysis.aiFlags.score}%</span>
+                    <span className="text-sm text-gray-600">
+                      {siteData.detailedAnalysis.aiFlags.score}%
+                    </span>
                   </div>
                   <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
                     <div
                       className={`h-full ${getBarColor(siteData.detailedAnalysis.aiFlags.score)}`}
-                      style={{ width: `${siteData.detailedAnalysis.aiFlags.score}%` }}
+                      style={{ width: `${Math.min(siteData.detailedAnalysis.aiFlags.score, 100)}%` }}
                     />
                   </div>
                   <p className="text-sm text-gray-600">{siteData.detailedAnalysis.aiFlags.text}</p>
                 </div>
               </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border-2 border-gray-900 p-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Debug Response
-              </h2>
-              <pre className="text-xs bg-gray-100 p-4 rounded-lg overflow-auto whitespace-pre-wrap">
-                {JSON.stringify(analysisData, null, 2)}
-              </pre>
             </div>
 
             <div className="bg-white rounded-2xl border-2 border-gray-900 p-8">
