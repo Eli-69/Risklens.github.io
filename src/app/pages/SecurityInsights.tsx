@@ -190,51 +190,50 @@ export function SecurityInsights() {
     : [];
 
   const cleanDomain = displayDomain.split('/')[0];
-    
-  const siteData = {
-    domain: displayDomain,
-    const logoUrl = `https://logo.clearbit.com/${cleanDomain}`;
-    logo: logoUrl,
-    securityHistory: {
-      dataBreaches: 'No recent breach data',
-      serverCrash: 'No recent crash data',
+
+const siteData = {
+  domain: displayDomain,
+  logo: `https://logo.clearbit.com/${cleanDomain}`,
+  securityHistory: {
+    dataBreaches: 'No recent breach data',
+    serverCrash: 'No recent crash data',
+  },
+  riskScore,
+  verdict,
+  whyFlagged,
+  source: analysisData?.source ?? 'unknown',
+  detailedAnalysis: {
+    security: {
+      score: riskScore,
+      text: `Verdict: ${verdict}`,
     },
-    riskScore,
-    verdict,
-    whyFlagged,
-    source: analysisData?.source ?? 'unknown',
-    detailedAnalysis: {
-      security: {
-        score: riskScore,
-        text: `Verdict: ${verdict}`,
-      },
-      phishing: {
-        score: phishingScore,
-        text:
-          whyFlagged.length > 0
-            ? whyFlagged.join(', ')
-            : 'No major phishing signals detected.',
-      },
-      tracking: {
-        score: 0,
-        text: 'Tracking analysis not connected yet.',
-      },
-      aiFlags: {
-        score: 0,
-        text: 'AI flag details not connected yet.',
-      },
+    phishing: {
+      score: phishingScore,
+      text:
+        whyFlagged.length > 0
+          ? whyFlagged.join(', ')
+          : 'No major phishing signals detected.',
     },
-    trustedSites: [
-      'https://www.wikipedia.org',
-      'https://archive.org',
-      'https://www.gutenberg.org',
-      'https://www.khanacademy.org',
-      'https://www.nasa.gov',
-      'https://www.nih.gov',
-      'https://www.data.gov',
-      'https://www.duolingo.com',
-    ],
-  };
+    tracking: {
+      score: 0,
+      text: 'Tracking analysis not connected yet.',
+    },
+    aiFlags: {
+      score: 0,
+      text: 'AI flag details not connected yet.',
+    },
+  },
+  trustedSites: [
+    'https://www.wikipedia.org',
+    'https://archive.org',
+    'https://www.gutenberg.org',
+    'https://www.khanacademy.org',
+    'https://www.nasa.gov',
+    'https://www.nih.gov',
+    'https://www.data.gov',
+    'https://www.duolingo.com',
+  ],
+};
 
   return (
     <div className="min-h-screen bg-gray-50">
