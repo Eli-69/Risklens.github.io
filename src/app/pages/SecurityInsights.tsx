@@ -11,6 +11,13 @@ import { saveScanResult } from '../services/scanService';
 export function SecurityInsights() {
   const { domain } = useParams();
 
+  const decodedInput = domain ? decodeURIComponent(domain) : '';
+  const fullUrl = decodedInput
+    ? decodedInput.startsWith('http')
+      ? decodedInput
+      : `https://${decodedInput}`
+    : '';
+
   const [userName, setUserName] = useState('');
   const [userReview, setUserReview] = useState('');
   const [userRating, setUserRating] = useState(0);
@@ -20,81 +27,76 @@ export function SecurityInsights() {
   const [analysisData, setAnalysisData] = useState<any>(null);
 
   useEffect(() => {
-  async function loadInsights() {
-    if (!domain) return;
-
-    try {
-      setLoading(true);
-      setError('');
-
-      const decodedInput = decodeURIComponent(domain);
-      const fullUrl = decodedInput.startsWith('http')
-        ? decodedInput
-        : `https://${decodedInput}`;
-
-      console.log('FULL URL SENT:', fullUrl);
-
-      const response = await fetch('/api/predict', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          input: fullUrl,
-        }),
-      });
-
-      const data = await response.json();
-      console.log('PREDICT RESPONSE:', data);
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to analyze site');
-      }
-
-      setAnalysisData(data);
+    async function loadInsights() {
+      if (!domain || !fullUrl) return;
 
       try {
-        const savedScore =
-          typeof data.result?.score === 'number'
-            ? data.result.score
-            : typeof data.result?.riskScore === 'number'
-              ? data.result.riskScore
-              : 0;
+        setLoading(true);
+        setError('');
 
-        const savedVerdict =
-          data.result?.verdict ??
-          (savedScore <= 1
-            ? savedScore * 100 > 60
-              ? 'warning'
-              : savedScore * 100 > 30
-                ? 'moderate'
-                : 'legitimate'
-            : savedScore > 60
-              ? 'warning'
-              : savedScore > 30
-                ? 'moderate'
-                : 'legitimate');
+        console.log('FULL URL SENT:', fullUrl);
 
-        await saveScanResult({
-          url: fullUrl,
-          score: savedScore,
-          verdict: savedVerdict,
-          source: data.source,
+        const response = await fetch('/api/predict', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            input: fullUrl,
+          }),
         });
-      } catch (saveError: any) {
-        if (saveError?.message !== 'User not logged in') {
-          console.log('Scan not saved:', saveError);
-        }
-      }
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
-    } finally {
-      setLoading(false);
-    }
-  }
 
-  loadInsights();
-}, [domain]);
+        const data = await response.json();
+        console.log('PREDICT RESPONSE:', data);
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to analyze site');
+        }
+
+        setAnalysisData(data);
+
+        try {
+          const savedScore =
+            typeof data.result?.score === 'number'
+              ? data.result.score
+              : typeof data.result?.riskScore === 'number'
+                ? data.result.riskScore
+                : 0;
+
+          const savedVerdict =
+            data.result?.verdict ??
+            (savedScore <= 1
+              ? savedScore * 100 > 60
+                ? 'warning'
+                : savedScore * 100 > 30
+                  ? 'moderate'
+                  : 'legitimate'
+              : savedScore > 60
+                ? 'warning'
+                : savedScore > 30
+                  ? 'moderate'
+                  : 'legitimate');
+
+          await saveScanResult({
+            url: fullUrl,
+            score: savedScore,
+            verdict: savedVerdict,
+            source: data.source,
+          });
+        } catch (saveError: any) {
+          if (saveError?.message !== 'User not logged in') {
+            console.log('Scan not saved:', saveError);
+          }
+        }
+      } catch (err: any) {
+        setError(err.message || 'Something went wrong');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadInsights();
+  }, [domain, fullUrl]);
 
   const getRiskScoreColor = (score: number) => {
     if (score <= 30) return 'text-green-600';
@@ -170,12 +172,12 @@ export function SecurityInsights() {
       : [];
 
   const displayDomain = fullUrl
-    .replace(/^https?:\/\//, '')
-    .replace(/\/$/, '');
+    ? fullUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')
+    : 'example.com';
 
   const siteData = {
     domain: displayDomain || 'example.com',
-    logo: 'https://logo.clearbit.com/' + (domain || 'example.com'),
+    logo: 'https://logo.clearbit.com/' + (displayDomain || 'example.com'),
     riskScore,
     verdict,
     whyFlagged,
