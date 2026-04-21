@@ -24,26 +24,32 @@ export function Hero() {
       const response = await fetch('/api/resolve-site', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
+        'Content-Type': 'application/json',
         },
         body: JSON.stringify({ input: url }),
-      });
+    });
 
-      const data = await response.json();
+    const data = await response.json();
+    console.log('RESOLVE SITE RESPONSE:', data);
 
-      if (!response.ok || !data.found || !data.resolvedUrl) {
-        setSearchError('Could not find a real website from that search.');
-        return;
-      }
-
-      navigate(`/insights/${encodeURIComponent(data.resolvedUrl)}`);
-    } catch (err) {
-      console.error('Resolve site error:', err);
-      setSearchError('Something went wrong while checking that site.');
-    } finally {
-      setSearchLoading(false);
+    if (!response.ok) {
+      setSearchError(data.error || data.details || 'Something went wrong while checking that site.');
+      return;
     }
-  };
+
+    if (!data.found || !data.resolvedUrl) {
+      setSearchError('Could not find a real website from that search.');
+      return;
+    }
+
+    navigate(`/insights/${encodeURIComponent(data.resolvedUrl)}`);
+  } catch (err) {
+    console.error('Resolve site error:', err);
+    setSearchError('Something went wrong while checking that site.');
+  } finally {
+    setSearchLoading(false);
+  }
+};
 
   useEffect(() => {
     if (isPaused) return;
