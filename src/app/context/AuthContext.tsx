@@ -5,11 +5,13 @@ import { watchAuthState } from "../services/authService";
 type AuthContextType = {
   user: User | null;
   loading: boolean;
+  isAuthenticated: boolean;
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
+  isAuthenticated: false,
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -26,7 +28,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        isAuthenticated: !!user,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

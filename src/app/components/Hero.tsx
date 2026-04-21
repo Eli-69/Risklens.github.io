@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, ArrowRight, Search, Download, Globe, Mail, MessageCircle } from 'lucide-react';
+import { Shield, ArrowRight, Search, Download, Globe, Mail, MessageCircle, ChevronDown } from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -8,11 +8,36 @@ import { useNavigate, Link } from 'react-router';
 
 export function Hero() {
   const [url, setUrl] = useState('');
+  const [selectedTld, setSelectedTld] = useState('.com');
   const [isPaused, setIsPaused] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState('');
   const navigate = useNavigate();
+
+  const tlds = [
+    '.com',
+    '.org',
+    '.net',
+    '.edu',
+    '.gov',
+    '.io',
+    '.co',
+    '.info',
+    '.mil',
+    '.shop',
+    '.store',
+    '.app',
+    '.us',
+    '.uk',
+    '.ca',
+    '.de',
+    '.fr',
+    '.jp',
+    '.cn',
+    '.in',
+    '.au',
+  ];
 
   const handleAnalyze = async () => {
     if (!url.trim()) return;
@@ -21,35 +46,45 @@ export function Hero() {
       setSearchLoading(true);
       setSearchError('');
 
+      let domain = url.trim();
+
+      domain = domain.replace(/^https?:\/\//, '');
+      domain = domain.replace(/^www\./, '');
+      domain = domain.split('/')[0];
+
+      if (!domain.includes('.')) {
+        domain = `${domain}${selectedTld}`;
+      }
+
       const response = await fetch('/api/resolve-site', {
         method: 'POST',
         headers: {
-        'Content-Type': 'application/json',
+          'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ input: url }),
-    });
+        body: JSON.stringify({ input: domain }),
+      });
 
-    const data = await response.json();
-    console.log('RESOLVE SITE RESPONSE:', data);
+      const data = await response.json();
+      console.log('RESOLVE SITE RESPONSE:', data);
 
-    if (!response.ok) {
-      setSearchError(data.error || data.details || 'Something went wrong while checking that site.');
-      return;
+      if (!response.ok) {
+        setSearchError(data.error || data.details || 'Something went wrong while checking that site.');
+        return;
+      }
+
+      if (!data.found || !data.resolvedUrl) {
+        setSearchError('Could not find a real website from that search.');
+        return;
+      }
+
+      navigate(`/insights/${encodeURIComponent(data.resolvedUrl)}`);
+    } catch (err) {
+      console.error('Resolve site error:', err);
+      setSearchError('Something went wrong while checking that site.');
+    } finally {
+      setSearchLoading(false);
     }
-
-    if (!data.found || !data.resolvedUrl) {
-      setSearchError('Could not find a real website from that search.');
-      return;
-    }
-
-    navigate(`/insights/${encodeURIComponent(data.resolvedUrl)}`);
-  } catch (err) {
-    console.error('Resolve site error:', err);
-    setSearchError('Something went wrong while checking that site.');
-  } finally {
-    setSearchLoading(false);
-  }
-};
+  };
 
   useEffect(() => {
     if (isPaused) return;
@@ -89,40 +124,72 @@ export function Hero() {
                   </Button>
 
                   <div className="relative">
-                    <Input
-                      type="text"
-                      placeholder="Check your sites"
-                      value={url}
-                      onFocus={() => setIsPaused(true)}
-                      onChange={(e) => {
-                        setIsPaused(true);
-                        setUrl(e.target.value);
-                        if (searchError) setSearchError('');
-                      }}
-                      onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
-                      className="w-full h-14 pl-6 pr-14 rounded-full bg-green-600 border-0 text-white placeholder:text-white/80 text-base"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleAnalyze}
-                      disabled={searchLoading}
-                      className="absolute right-5 top-1/2 -translate-y-1/2 text-white hover:text-white/80 transition-colors disabled:opacity-60"
-                    >
-                      <Search className="size-5" />
-                    </button>
+                    <div className="relative flex items-center bg-green-600 rounded-full h-14">
+                      <Input
+                        type="text"
+                        placeholder="Check your sites"
+                        value={url}
+                        onFocus={() => setIsPaused(true)}
+                        onChange={(e) => {
+                          setIsPaused(true);
+                          setUrl(e.target.value);
+                          if (searchError) setSearchError('');
+                        }}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAnalyze()}
+                        className="flex-1 h-full pl-6 pr-4 rounded-l-full bg-transparent border-0 text-white placeholder:text-white/80 text-base focus:outline-none focus:ring-0"
+                      />
+
+                      <div className="h-8 w-px bg-white/30" />
+
+                      <div className="relative">
+                        <select
+                          value={selectedTld}
+                          onChange={(e) => setSelectedTld(e.target.value)}
+                          onFocus={() => setIsPaused(true)}
+                          className="h-14 pl-4 pr-10 bg-transparent border-0 text-white text-base cursor-pointer appearance-none focus:outline-none focus:ring-0 min-w-[90px]"
+                          style={{
+                            backgroundImage: 'none',
+                            WebkitAppearance: 'none',
+                            MozAppearance: 'none',
+                          }}
+                        >
+                          {tlds.map((tld) => (
+                            <option
+                              key={tld}
+                              value={tld}
+                              className="bg-green-600 text-white"
+                            >
+                              {tld}
+                            </option>
+                          ))}
+                        </select>
+                        <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 size-4 text-white pointer-events-none" />
+                      </div>
+
+                      <div className="h-8 w-px bg-white/30 mr-2" />
+
+                      <button
+                        type="button"
+                        onClick={handleAnalyze}
+                        disabled={searchLoading}
+                        className="text-white hover:text-white/80 transition-colors p-2 pr-4 disabled:opacity-60"
+                      >
+                        <Search className="size-5" />
+                      </button>
+                    </div>
+
+                    {searchError && (
+                      <p className="mt-3 text-sm text-red-600">
+                        {searchError}
+                      </p>
+                    )}
+
+                    {searchLoading && (
+                      <p className="mt-3 text-sm text-gray-600">
+                        Checking website...
+                      </p>
+                    )}
                   </div>
-
-                  {searchError && (
-                    <p className="mt-3 text-sm text-red-600">
-                      {searchError}
-                    </p>
-                  )}
-
-                  {searchLoading && (
-                    <p className="mt-3 text-sm text-gray-600">
-                      Checking website...
-                    </p>
-                  )}
                 </div>
 
                 <div className="relative">
@@ -258,7 +325,9 @@ export function Hero() {
                   </div>
 
                   <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12">
-                    <Link to="/help">Contact Support</Link>
+                    <Link to="/help">
+                      Contact Support
+                    </Link>
                   </Button>
                 </div>
 

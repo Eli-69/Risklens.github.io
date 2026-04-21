@@ -6,12 +6,12 @@ import { logout } from '../services/authService';
 import { useState } from 'react';
 
 export function Navigation() {
-  const { user, loading } = useAuth();
+  const { user, loading, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
   const handleAuthClick = () => {
-    if (user) {
+    if (isAuthenticated) {
       setShowSignOutConfirm(true);
     } else {
       navigate('/login');
@@ -63,11 +63,18 @@ export function Navigation() {
 
               {!loading && (
                 <button
+                  type="button"
                   onClick={handleAuthClick}
                   className="text-gray-700 hover:text-gray-900 transition-colors"
                 >
-                  {user ? 'Sign out' : 'Log in'}
+                  {isAuthenticated ? 'Sign out' : 'Log in'}
                 </button>
+              )}
+
+              {!loading && user?.email && (
+                <span className="text-sm text-gray-500">
+                  {user.email}
+                </span>
               )}
             </div>
 
@@ -88,6 +95,7 @@ export function Navigation() {
 
             <div className="flex gap-3">
               <Button
+                type="button"
                 onClick={() => setShowSignOutConfirm(false)}
                 variant="outline"
                 className="flex-1 border-gray-300 hover:bg-gray-50"
@@ -96,6 +104,7 @@ export function Navigation() {
               </Button>
 
               <Button
+                type="button"
                 onClick={confirmSignOut}
                 className="flex-1 bg-green-600 hover:bg-green-700 text-white"
               >
