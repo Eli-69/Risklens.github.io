@@ -189,9 +189,12 @@ export function SecurityInsights() {
     ? result.why_flagged
     : [];
 
+  const cleanDomain = displayDomain.split('/')[0];
+    
   const siteData = {
     domain: displayDomain,
-    logo: 'https://logo.clearbit.com/' + displayDomain,
+    const logoUrl = `https://logo.clearbit.com/${cleanDomain}`;
+    logo: logoUrl,
     securityHistory: {
       dataBreaches: 'No recent breach data',
       serverCrash: 'No recent crash data',
@@ -249,8 +252,7 @@ export function SecurityInsights() {
                       alt={siteData.domain}
                       className="w-full h-full object-contain"
                       onError={(e) => {
-                        e.currentTarget.src =
-                          'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ctext y="50" x="50" text-anchor="middle" dy=".3em" font-size="48"%3E🌐%3C/text%3E%3C/svg%3E';
+                        e.currentTarget.src = `https://www.google.com/s2/favicons?domain=${cleanDomain}&sz=128`;
                       }}
                     />
                   </div>
