@@ -2,10 +2,11 @@ import { Button } from './ui/button';
 import logoImage from '../../assets/logo.svg';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import { logout } from '../services/authService';
 import { useState } from 'react';
 
 export function Navigation() {
-  const { isAuthenticated, logout, isAdmin, loading } = useAuth();
+  const { user, isAuthenticated, isAdmin, loading } = useAuth();
   const navigate = useNavigate();
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
@@ -17,8 +18,8 @@ export function Navigation() {
     }
   };
 
-  const confirmSignOut = () => {
-    logout();
+  const confirmSignOut = async () => {
+    await logout();
     setShowSignOutConfirm(false);
     navigate('/');
   };
@@ -34,32 +35,31 @@ export function Navigation() {
             </Link>
 
             <div className="hidden md:flex items-center gap-8">
-              <Link to="/" className="text-gray-700 hover:text-gray-900">
+              <Link to="/" className="text-gray-700 hover:text-gray-900 transition-colors">
                 Home
               </Link>
-              <Link to="/report-site" className="text-gray-700 hover:text-gray-900">
+              <Link to="/report-site" className="text-gray-700 hover:text-gray-900 transition-colors">
                 Report a site
               </Link>
-              <Link to="/whos-at-risk" className="text-gray-700 hover:text-gray-900">
-                Who's at risk
+              <Link to="/whos-at-risk" className="text-gray-700 hover:text-gray-900 transition-colors">
+                Who&apos;s at risk
               </Link>
-              <Link to="/help" className="text-gray-700 hover:text-gray-900">
+              <Link to="/help" className="text-gray-700 hover:text-gray-900 transition-colors">
                 Help
               </Link>
-              <Link to="/dashboard" className="text-gray-700 hover:text-gray-900">
+              <Link to="/dashboard" className="text-gray-700 hover:text-gray-900 transition-colors">
                 Dashboard
               </Link>
 
-              {/* ✅ Admin link only shows for admins */}
               {!loading && isAdmin && (
-                <Link to="/admin" className="text-red-600 font-semibold">
+                <Link to="/admin" className="text-gray-700 hover:text-gray-900 transition-colors">
                   Admin
                 </Link>
               )}
 
               <button
                 onClick={handleAuthClick}
-                className="text-gray-700 hover:text-gray-900"
+                className="text-gray-700 hover:text-gray-900 transition-colors"
               >
                 {isAuthenticated ? 'Sign out' : 'Log in'}
               </button>
@@ -77,19 +77,19 @@ export function Navigation() {
           <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-3">Sign Out?</h2>
             <p className="text-gray-600 mb-6">
-              Are you sure you want to sign out?
+              Are you sure you want to sign out? You&apos;ll need to log in again to access your dashboard and saved data.
             </p>
             <div className="flex gap-3">
               <Button
                 onClick={() => setShowSignOutConfirm(false)}
                 variant="outline"
-                className="flex-1"
+                className="flex-1 border-gray-300 hover:bg-gray-50"
               >
                 Cancel
               </Button>
               <Button
                 onClick={confirmSignOut}
-                className="flex-1 bg-green-600 text-white"
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white"
               >
                 Sign Out
               </Button>
