@@ -11,6 +11,8 @@ import { Help } from "./pages/Help";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { VerifyAccount } from "./pages/VerifyAccount";
 import { RequireAuth } from "./pages/RequireAuth";
+import { AdminRoute } from "./components/AdminRoute";
+import { AdminDashboard } from "./pages/AdminDashboard";
 
 export const router = createHashRouter([
   { path: "/", Component: Home },
@@ -29,4 +31,9 @@ export const router = createHashRouter([
   { path: "/forgot-password", Component: ForgotPassword },
   { path: "/verify-account", Component: VerifyAccount },
   { path: "/require-auth", Component: RequireAuth },
+  { path: "/admin", Component: () => (
+    <AdminRoute>
+      <AdminDashboard />
+    </AdminRoute>
+  ), },
 ]);
