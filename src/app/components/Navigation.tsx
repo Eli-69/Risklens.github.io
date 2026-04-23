@@ -6,7 +6,7 @@ import { logout } from '../services/authService';
 import { useState } from 'react';
 
 export function Navigation() {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading, isAuthenticated, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
@@ -60,6 +60,12 @@ export function Navigation() {
               <Link to="/dashboard" className="text-gray-700 hover:text-gray-900 transition-colors">
                 Dashboard
               </Link>
+
+              {!loading && isAdmin && (
+                <Link to="/admin" className="text-gray-700 hover:text-gray-900 transition-colors">
+                  Admin
+                </Link>
+              )}
 
               {!loading && (
                 <button
