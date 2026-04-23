@@ -1,5 +1,5 @@
 import { Button } from './ui/button';
-import logoImage from 'figma:asset/5359972e9e4260f6bcd141dfc6d216542cc5799c.png';
+import Logo from '../../assets/logo.svg';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
