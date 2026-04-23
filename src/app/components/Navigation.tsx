@@ -1,5 +1,5 @@
 import { Button } from './ui/button';
-import Logo from '../../assets/logo.svg';
+import logoImage from '../../assets/logo.svg';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { useState } from 'react';
