@@ -94,7 +94,7 @@ export function AdminDashboard() {
           getDocs(collection(db, 'frequentlyBrowsedSites')),
           getDocs(collection(db, 'recentActivity')),
           getDocs(collection(db, 'helpRequests')),
-          getDocs(collection(db, 'reportedSites')),
+          getDocs(collection(db, 'siteReports')),
         ]);
 
         if (statsSnap.exists()) {
@@ -141,16 +141,24 @@ export function AdminDashboard() {
         );
 
         setReportedSites(
-          reportsSnap.docs.map((docItem) => ({
+           reportsSnap.docs.map((docItem) => ({
             id: docItem.id,
             url: String(docItem.data().url || ''),
             category: String(docItem.data().category || ''),
-            reporter: String(docItem.data().reporter || ''),
+            reporter: String(
+              docItem.data().submittedByEmail ||
+              docItem.data().submittedBy ||
+              docItem.data().reporter ||
+              'Anonymous'
+            ),
             description: String(docItem.data().description || ''),
-            status: String(docItem.data().status || 'under-review'),
-            time: String(docItem.data().time || ''),
+            status: String(docItem.data().status || 'pending'),
+            time: docItem.data().createdAt?.toDate
+              ? docItem.data().createdAt.toDate().toLocaleString()
+              : String(docItem.data().time || 'Unknown date'),
           }))
         );
+
       } catch (err: any) {
         console.error('Admin dashboard load error:', err);
         setError(err.message || 'Failed to load admin dashboard data.');
@@ -415,7 +423,7 @@ export function AdminDashboard() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Reported Sites</h2>
               <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
-                {reportedSites.filter((r) => r.status === 'under-review').length} Under Review
+                {reportedSites.filter((r) => r.status === 'pending').length} Pending
               </span>
             </div>
 
