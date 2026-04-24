@@ -7,6 +7,14 @@ import { useState } from 'react';
 
 export function Navigation() {
   const { user, loading, isAuthenticated, isAdmin } = useAuth();
+
+  console.log('NAV STATE:', {
+  email: user?.email,
+  loading,
+  isAuthenticated,
+  isAdmin,
+});
+
   const navigate = useNavigate();
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
