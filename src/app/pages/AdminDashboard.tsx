@@ -136,7 +136,9 @@ export function AdminDashboard() {
             subject: String(docItem.data().subject || ''),
             message: String(docItem.data().message || ''),
             status: String(docItem.data().status || 'pending'),
-            time: String(docItem.data().time || ''),
+            time: docItem.data().time?.toDate
+              ? docItem.data().time.toDate().toLocaleString()
+              : 'Unknown date',
           }))
         );
 
