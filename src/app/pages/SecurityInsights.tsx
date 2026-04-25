@@ -267,7 +267,6 @@ export function SecurityInsights() {
   const sslCertificate = {
     checked: Boolean(certificateCheck.checked),
     hasSSL: certificateCheck.checked ? Boolean(certificateCheck.cert_valid) : false,
-    isValid: certificateCheck.checked ? Boolean(certificateCheck.cert_valid) : false,
     isExpired: certificateCheck.checked ? Boolean(certificateCheck.cert_expired) : false,
   };
 
@@ -283,14 +282,106 @@ export function SecurityInsights() {
     signals,
     sslCertificate,
     trustedSites: [
-      'https://www.wikipedia.org',
-      'https://archive.org',
-      'https://www.gutenberg.org',
-      'https://www.khanacademy.org',
-      'https://www.nasa.gov',
-      'https://www.nih.gov',
-      'https://www.data.gov',
-      'https://www.duolingo.com',
+      {
+        category: '🔍 Search & Tools',
+        sites: [
+          'https://www.google.com',
+          'https://www.bing.com',
+          'https://duckduckgo.com',
+          'https://www.yahoo.com',
+          'https://www.wolframalpha.com',
+        ],
+      },
+      {
+        category: '🎓 Education & Learning',
+        sites: [
+          'https://www.khanacademy.org',
+          'https://www.coursera.org',
+          'https://www.edx.org',
+          'https://ocw.mit.edu',
+          'https://www.nationalgeographic.com',
+          'https://www.bbc.com',
+          'https://www.si.edu',
+        ],
+      },
+      {
+        category: '🛒 Shopping & E-commerce',
+        sites: [
+          'https://www.amazon.com',
+          'https://www.walmart.com',
+          'https://www.target.com',
+          'https://www.bestbuy.com',
+          'https://www.ebay.com',
+          'https://www.etsy.com',
+          'https://www.apple.com',
+        ],
+      },
+      {
+        category: '🍿 Movies, TV & Streaming',
+        sites: [
+          'https://www.netflix.com',
+          'https://www.disneyplus.com',
+          'https://www.hulu.com',
+          'https://www.youtube.com',
+          'https://www.imdb.com',
+        ],
+      },
+      {
+        category: '🚗 Cars & Automotive',
+        sites: [
+          'https://www.carmax.com',
+          'https://www.autotrader.com',
+          'https://www.kbb.com',
+          'https://www.cars.com',
+          'https://www.edmunds.com',
+        ],
+      },
+      {
+        category: '🥦 Groceries & Food',
+        sites: [
+          'https://www.instacart.com',
+          'https://www.wholefoodsmarket.com',
+          'https://www.kroger.com',
+          'https://www.hellofresh.com',
+          'https://www.doordash.com',
+        ],
+      },
+      {
+        category: '🎁 Giveaways, Deals & Discounts',
+        sites: [
+          'https://www.joinhoney.com',
+          'https://www.retailmenot.com',
+          'https://www.slickdeals.net',
+          'https://www.groupon.com',
+          'https://www.rakuten.com',
+        ],
+      },
+      {
+        category: '💼 Tech & Productivity',
+        sites: [
+          'https://www.microsoft.com',
+          'https://www.github.com',
+          'https://stackoverflow.com',
+          'https://www.dropbox.com',
+          'https://www.notion.so',
+        ],
+      },
+      {
+        category: '🌐 News & Information',
+        sites: [
+          'https://www.cnn.com',
+          'https://www.nytimes.com',
+          'https://www.reuters.com',
+          'https://www.npr.org',
+        ],
+      },
+      {
+        category: '🏛️ Government & Official',
+        sites: [
+          'https://www.usa.gov',
+          'https://www.irs.gov',
+        ],
+      },
     ],
   };
 
@@ -424,13 +515,6 @@ export function SecurityInsights() {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-700">Certificate Valid:</span>
-                        <span className={`font-semibold ${siteData.sslCertificate.isValid ? 'text-green-600' : 'text-red-600'}`}>
-                          {siteData.sslCertificate.isValid ? 'Yes ✓' : 'No ✗'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
                         <span className="text-gray-700">Certificate Expired:</span>
                         <span className={`font-semibold ${siteData.sslCertificate.isExpired ? 'text-red-600' : 'text-green-600'}`}>
                           {siteData.sslCertificate.isExpired ? 'Yes ✗' : 'No ✓'}
@@ -537,24 +621,35 @@ export function SecurityInsights() {
           </div>
 
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl border-2 border-gray-900 p-6 sticky top-6">
+            <div className="bg-white rounded-2xl border-2 border-gray-900 p-6 sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
               <h2 className="text-xl font-bold text-gray-900 mb-4">
                 More trusted websites
               </h2>
-              <ul className="space-y-2">
-                {siteData.trustedSites.map((site, index) => (
-                  <li key={index}>
-                    <a
-                      href={site}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline text-sm break-all"
-                    >
-                      {site}
-                    </a>
-                  </li>
+
+              <div className="space-y-4">
+                {siteData.trustedSites.map((category, categoryIndex) => (
+                  <div key={categoryIndex}>
+                    <h3 className="font-semibold text-gray-900 mb-2 text-sm">
+                      {category.category}
+                    </h3>
+
+                    <ul className="space-y-1 ml-2">
+                      {category.sites.map((site, siteIndex) => (
+                        <li key={siteIndex}>
+                          <a
+                            href={site}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm break-all"
+                          >
+                            {site}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
         </div>
