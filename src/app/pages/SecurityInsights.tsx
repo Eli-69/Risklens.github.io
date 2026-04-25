@@ -190,19 +190,38 @@ export function SecurityInsights() {
     try {
       setReviewSubmitting(true);
       setReviewError('');
+
       if (!auth.currentUser) {
         setShowLoginPrompt(true);
         return;
       }
+
+      if (!userName.trim()) {
+        setReviewError('Please enter your name.');
+        return;
+      }
+
+      if (userRating < 1 || userRating > 5) {
+        setReviewError('Please select a rating.');
+        return;
+      }
+
+      if (!userReview.trim()) {
+        setReviewError('Please enter a review.');
+        return;
+      }
+
       await submitSiteReview({
-        name: userName,
+        name: userName.trim(),
         rating: userRating,
-        review: userReview,
+        review: userReview.trim(),
         url: fullUrl,
         domain: cleanDomain,
       });
+
       const updatedReviews = await getReviewsForSite(fullUrl);
       setSiteReviews(updatedReviews);
+
       setUserName('');
       setUserReview('');
       setUserRating(0);
@@ -217,7 +236,7 @@ export function SecurityInsights() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />
-        <div className="container mx-auto px-6 py-12">
+        <div className="container mx-auto px-6 pt-24 pb-12">
           <p className="text-lg text-gray-700">Analyzing site...</p>
         </div>
         <Footer />
@@ -229,7 +248,7 @@ export function SecurityInsights() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />
-        <div className="container mx-auto px-6 py-12">
+        <div className="container mx-auto px-6 pt-24 pb-12">
           <p className="text-lg text-red-600">{error}</p>
         </div>
         <Footer />
@@ -439,7 +458,7 @@ export function SecurityInsights() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
 
-      <div className="container mx-auto px-6 py-12">
+      <div className="container mx-auto px-6 pt-24 pb-12">
         <div className="grid lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-2xl border-2 border-gray-900 p-8">
@@ -566,7 +585,7 @@ export function SecurityInsights() {
               {siteReviews.length > 0 ? (
                 <div className="space-y-4 mb-8">
                   {siteReviews.map((review, index) => (
-                    <div key={index} className="bg-gray-50 rounded-xl p-6">
+                    <div key={review.id || index} className="bg-gray-50 rounded-xl p-6">
                       <div className="flex items-start gap-4">
                         <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0" />
                         <div className="flex-1">
@@ -611,7 +630,10 @@ export function SecurityInsights() {
                       type="text"
                       placeholder="Enter your name..."
                       value={userName}
-                      onChange={(e) => setUserName(e.target.value)}
+                      onChange={(e) => {
+                        setUserName(e.target.value);
+                        if (reviewError) setReviewError('');
+                      }}
                       className="w-full border-2 border-gray-900 rounded-lg"
                     />
                   </div>
@@ -625,7 +647,10 @@ export function SecurityInsights() {
                         <button
                           key={star}
                           type="button"
-                          onClick={() => setUserRating(star)}
+                          onClick={() => {
+                            setUserRating(star);
+                            if (reviewError) setReviewError('');
+                          }}
                           className="focus:outline-none"
                         >
                           <Star
@@ -647,7 +672,10 @@ export function SecurityInsights() {
                     <Textarea
                       placeholder="Share your experience good or bad..."
                       value={userReview}
-                      onChange={(e) => setUserReview(e.target.value)}
+                      onChange={(e) => {
+                        setUserReview(e.target.value);
+                        if (reviewError) setReviewError('');
+                      }}
                       className="w-full border-2 border-gray-900 rounded-lg min-h-32"
                     />
                   </div>
@@ -669,7 +697,7 @@ export function SecurityInsights() {
           </div>
 
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl border-2 border-gray-900 p-6 sticky top-6 max-h-[calc(100vh-8rem)] overflow-y-auto">
+            <div className="bg-white rounded-2xl border-2 border-gray-900 p-6 sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
               <h2 className="text-xl font-bold text-gray-900 mb-4">
                 More trusted websites
               </h2>

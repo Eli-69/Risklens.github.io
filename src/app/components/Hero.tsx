@@ -116,7 +116,7 @@ export function Hero() {
   }, [isPaused]);
 
   return (
-    <section className="relative overflow-hidden bg-gray-50 pt-20 pb-16">
+    <section className="relative overflow-hidden bg-gray-50 pt-30 pb-16">
       <div className="container mx-auto px-6">
         <AnimatePresence mode="wait">
           {currentSlide === 0 && (

@@ -286,7 +286,7 @@ export function AdminDashboard() {
               </div>
             </div>
             <h3 className="text-gray-600 text-sm mb-1">Total Comments</h3>
-            <p className="text-3xl font-bold text-gray-900">{stats.totalComments.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-gray-900">{allReviews.length.toLocaleString()}</p>
           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -437,7 +437,7 @@ export function AdminDashboard() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Reported Sites</h2>
               <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
-                {reportedSites.filter((r) => r.status === 'pending').length} Pending
+                {reportedSites.filter((r) => r.status === 'under-review').length} Under Review
               </span>
             </div>
 
@@ -541,26 +541,7 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        {/* Firebase Index Warning */}
-        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="size-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-yellow-800 mb-1">Firebase Composite Index Required</p>
-              <p className="text-sm text-yellow-700">
-                The reviews query uses <code className="bg-yellow-100 px-1 rounded">where('url', '==', url)</code> combined
-                with <code className="bg-yellow-100 px-1 rounded">orderBy('createdAt', 'desc')</code>. Firestore requires
-                a composite index for this. If you see a missing index error in the console, open the Firebase link
-                provided in the error to create it automatically, or go to{' '}
-                <span className="font-medium">Firestore → Indexes → Composite</span> and add an index on the{' '}
-                <code className="bg-yellow-100 px-1 rounded">siteReviews</code> collection with fields{' '}
-                <code className="bg-yellow-100 px1 rounded">url (Ascending)</code> and{' '}
-                <code className="bg-yellow-100 px-1 rounded">createdAt (Descending)</code>.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+
 
       <Footer />
     </div>
