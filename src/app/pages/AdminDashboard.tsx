@@ -540,6 +540,7 @@ export function AdminDashboard() {
             </table>
           </div>
         </div>
+      </div>
 
 
 
