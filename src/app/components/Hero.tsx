@@ -1,5 +1,16 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, ArrowRight, Search, Download, Globe, Mail, MessageCircle, ChevronDown } from 'lucide-react';
+import {
+  Shield,
+  ArrowRight,
+  Search,
+  Download,
+  Globe,
+  Mail,
+  MessageCircle,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ImageWithFallback } from './figma/ImageWithFallback';
@@ -84,6 +95,14 @@ export function Hero() {
     } finally {
       setSearchLoading(false);
     }
+  };
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % 3);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + 3) % 3);
   };
 
   useEffect(() => {
@@ -343,28 +362,46 @@ export function Hero() {
           )}
         </AnimatePresence>
 
-        <div className="flex justify-center gap-2 mt-12">
+        <div className="flex justify-center items-center gap-4 mt-12">
           <button
-            onClick={() => setCurrentSlide(0)}
-            className={`w-2.5 h-2.5 rounded-full transition-colors ${
-              currentSlide === 0 ? 'bg-green-600' : 'bg-gray-300'
-            }`}
-            aria-label="Go to slide 1"
-          />
+            onClick={prevSlide}
+            className="w-8 h-8 bg-white rounded-full shadow flex items-center justify-center text-gray-700 hover:bg-green-600 hover:text-white transition-all"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="size-5" />
+          </button>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentSlide(0)}
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                currentSlide === 0 ? 'bg-green-600' : 'bg-gray-300'
+              }`}
+              aria-label="Go to slide 1"
+            />
+            <button
+              onClick={() => setCurrentSlide(1)}
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                currentSlide === 1 ? 'bg-green-600' : 'bg-gray-300'
+              }`}
+              aria-label="Go to slide 2"
+            />
+            <button
+              onClick={() => setCurrentSlide(2)}
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                currentSlide === 2 ? 'bg-green-600' : 'bg-gray-300'
+              }`}
+              aria-label="Go to slide 3"
+            />
+          </div>
+
           <button
-            onClick={() => setCurrentSlide(1)}
-            className={`w-2.5 h-2.5 rounded-full transition-colors ${
-              currentSlide === 1 ? 'bg-green-600' : 'bg-gray-300'
-            }`}
-            aria-label="Go to slide 2"
-          />
-          <button
-            onClick={() => setCurrentSlide(2)}
-            className={`w-2.5 h-2.5 rounded-full transition-colors ${
-              currentSlide === 2 ? 'bg-green-600' : 'bg-gray-300'
-            }`}
-            aria-label="Go to slide 3"
-          />
+            onClick={nextSlide}
+            className="w-8 h-8 bg-white rounded-full shadow flex items-center justify-center text-gray-700 hover:bg-green-600 hover:text-white transition-all"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="size-5" />
+          </button>
         </div>
       </div>
     </section>

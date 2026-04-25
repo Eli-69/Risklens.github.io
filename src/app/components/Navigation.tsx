@@ -60,7 +60,7 @@ export function Navigation() {
                 Report a site
               </Link>
               <Link to="/whos-at-risk" className="text-gray-700 hover:text-gray-900 transition-colors">
-                Who&apos;s at risk
+                Safety Guide
               </Link>
               <Link to="/help" className="text-gray-700 hover:text-gray-900 transition-colors">
                 Help
