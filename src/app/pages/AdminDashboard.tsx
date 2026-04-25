@@ -9,10 +9,12 @@ import {
   Shield,
   AlertTriangle,
   CheckCircle,
+  Star,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { getAllSiteReviews } from '../services/reviewService';
 
 type Stats = {
   totalUsers: number;
@@ -76,6 +78,7 @@ export function AdminDashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
   const [helpRequests, setHelpRequests] = useState<HelpRequest[]>([]);
   const [reportedSites, setReportedSites] = useState<ReportedSite[]>([]);
+  const [allReviews, setAllReviews] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadAdminData() {
@@ -89,12 +92,14 @@ export function AdminDashboard() {
           activitySnap,
           helpSnap,
           reportsSnap,
+          reviews,
         ] = await Promise.all([
           getDoc(doc(db, 'adminStats', 'overview')),
           getDocs(collection(db, 'frequentlyBrowsedSites')),
           getDocs(collection(db, 'recentActivity')),
           getDocs(collection(db, 'helpRequests')),
           getDocs(collection(db, 'siteReports')),
+          getAllSiteReviews(),
         ]);
 
         if (statsSnap.exists()) {
@@ -143,7 +148,7 @@ export function AdminDashboard() {
         );
 
         setReportedSites(
-           reportsSnap.docs.map((docItem) => ({
+          reportsSnap.docs.map((docItem) => ({
             id: docItem.id,
             url: String(docItem.data().url || ''),
             category: String(docItem.data().category || ''),
@@ -161,6 +166,7 @@ export function AdminDashboard() {
           }))
         );
 
+        setAllReviews(reviews);
       } catch (err: any) {
         console.error('Admin dashboard load error:', err);
         setError(err.message || 'Failed to load admin dashboard data.');
@@ -171,6 +177,12 @@ export function AdminDashboard() {
 
     loadAdminData();
   }, [timeRange]);
+
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'Unknown date';
+    if (timestamp.toDate) return timestamp.toDate().toLocaleString();
+    return String(timestamp);
+  };
 
   const getRiskColor = (risk: number) => {
     if (risk < 20) return 'text-green-600';
@@ -449,6 +461,102 @@ export function AdminDashboard() {
               {reportedSites.length === 0 && (
                 <p className="text-gray-500">No reported sites yet.</p>
               )}
+            </div>
+          </div>
+        </div>
+
+        {/* All Site Reviews */}
+        <div className="mt-6 bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <Star className="size-5 text-purple-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">All Site Reviews</h2>
+            <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+              {allReviews.length} Total
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Domain</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">URL</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">User</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Rating</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Review</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allReviews.map((review) => (
+                  <tr key={review.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-4 px-4">
+                      <span className="font-medium text-gray-900">{review.domain}</span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-sm text-blue-600 break-all max-w-[160px] block truncate" title={review.url}>
+                        {review.url}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-sm text-gray-600">
+                        {review.userEmail || review.email || 'Anonymous'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`size-4 ${
+                              i < review.rating
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <p className="text-sm text-gray-700 max-w-[240px] line-clamp-2">{review.review}</p>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                        {formatDate(review.createdAt ?? review.date)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {allReviews.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-4 px-4 text-gray-500">
+                      No reviews yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Firebase Index Warning */}
+        <div className="mt-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="size-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-yellow-800 mb-1">Firebase Composite Index Required</p>
+              <p className="text-sm text-yellow-700">
+                The reviews query uses <code className="bg-yellow-100 px-1 rounded">where('url', '==', url)</code> combined
+                with <code className="bg-yellow-100 px-1 rounded">orderBy('createdAt', 'desc')</code>. Firestore requires
+                a composite index for this. If you see a missing index error in the console, open the Firebase link
+                provided in the error to create it automatically, or go to{' '}
+                <span className="font-medium">Firestore → Indexes → Composite</span> and add an index on the{' '}
+                <code className="bg-yellow-100 px-1 rounded">siteReviews</code> collection with fields{' '}
+                <code className="bg-yellow-100 px1 rounded">url (Ascending)</code> and{' '}
+                <code className="bg-yellow-100 px-1 rounded">createdAt (Descending)</code>.
+              </p>
             </div>
           </div>
         </div>

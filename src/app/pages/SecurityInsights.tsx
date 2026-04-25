@@ -8,6 +8,7 @@ import { Textarea } from '../components/ui/textarea';
 import { useState, useEffect } from 'react';
 import { saveScanResult } from '../services/scanService';
 import { saveSite } from '../services/dashboardService';
+import { submitSiteReview, getReviewsForSite } from '../services/reviewService';
 import { auth } from '../../lib/firebase';
 
 export function SecurityInsights() {
@@ -57,6 +58,10 @@ export function SecurityInsights() {
 
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [siteSaved, setSiteSaved] = useState(false);
+
+  const [siteReviews, setSiteReviews] = useState<any[]>([]);
+  const [reviewError, setReviewError] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   useEffect(() => {
     async function loadInsights() {
@@ -126,6 +131,9 @@ export function SecurityInsights() {
             console.log('Scan not saved:', saveError);
           }
         }
+
+        const reviews = await getReviewsForSite(fullUrl);
+        setSiteReviews(reviews);
       } catch (err: any) {
         setError(err.message || 'Something went wrong');
       } finally {
@@ -178,11 +186,31 @@ export function SecurityInsights() {
     }
   };
 
-  const handleSubmitReview = () => {
-    console.log('Review submitted:', { userName, userReview, userRating });
-    setUserName('');
-    setUserReview('');
-    setUserRating(0);
+  const handleSubmitReview = async () => {
+    try {
+      setReviewSubmitting(true);
+      setReviewError('');
+      if (!auth.currentUser) {
+        setShowLoginPrompt(true);
+        return;
+      }
+      await submitSiteReview({
+        name: userName,
+        rating: userRating,
+        review: userReview,
+        url: fullUrl,
+        domain: cleanDomain,
+      });
+      const updatedReviews = await getReviewsForSite(fullUrl);
+      setSiteReviews(updatedReviews);
+      setUserName('');
+      setUserReview('');
+      setUserRating(0);
+    } catch (err: any) {
+      setReviewError(err.message || 'Failed to submit review.');
+    } finally {
+      setReviewSubmitting(false);
+    }
   };
 
   if (loading) {
@@ -535,24 +563,39 @@ export function SecurityInsights() {
                 User Reports
               </h2>
 
-              <div className="bg-gray-50 rounded-xl p-6">
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900 mb-1">
-                      User2361242692194
+              {siteReviews.length > 0 ? (
+                <div className="space-y-4 mb-8">
+                  {siteReviews.map((review, index) => (
+                    <div key={index} className="bg-gray-50 rounded-xl p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0" />
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900 mb-1">
+                            {review.name || 'Anonymous'}
+                          </div>
+                          <div className="flex gap-1 mb-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`size-4 ${
+                                  star <= review.rating
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'fill-none text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-gray-700">{review.review}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-1 mb-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star key={star} className="size-4 fill-yellow-400 text-yellow-400" />
-                      ))}
-                    </div>
-                    <p className="text-gray-700">
-                      This site is very cool and awesome! I&apos;ve never had any problems with it.
-                    </p>
-                  </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <p className="text-gray-500 text-sm mb-8">
+                  No reviews yet. Be the first to share your experience!
+                </p>
+              )}
 
               <div className="mt-8">
                 <div className="flex items-start gap-2 mb-4">
@@ -609,11 +652,16 @@ export function SecurityInsights() {
                     />
                   </div>
 
+                  {reviewError && (
+                    <p className="text-red-600 text-sm">{reviewError}</p>
+                  )}
+
                   <Button
                     onClick={handleSubmitReview}
-                    className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-8 h-12 font-semibold"
+                    disabled={reviewSubmitting}
+                    className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-8 h-12 font-semibold disabled:opacity-50"
                   >
-                    Submit Review
+                    {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
                   </Button>
                 </div>
               </div>

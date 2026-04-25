@@ -13,7 +13,8 @@ import {
 import { Link } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { getUserScans } from '../services/scanService';
-import { getSavedSites, getReviews } from '../services/dashboardService';
+import { getSavedSites } from '../services/dashboardService';
+import { getMyReviews } from '../services/reviewService';
 
 type ScanItem = {
   id: string;
@@ -32,21 +33,12 @@ type SavedSite = {
   savedDate?: any;
 };
 
-type Review = {
-  id: string;
-  domain: string;
-  url: string;
-  comment: string;
-  rating: number;
-  date?: any;
-};
-
 export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [scans, setScans] = useState<ScanItem[]>([]);
   const [savedWebsites, setSavedWebsites] = useState<SavedSite[]>([]);
-  const [recentComments, setRecentComments] = useState<Review[]>([]);
+  const [myReviews, setMyReviews] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -54,15 +46,15 @@ export function Dashboard() {
         setLoading(true);
         setError('');
 
-        const [scanData, savedData, reviewData] = await Promise.all([
+        const [scanData, savedData, reviews] = await Promise.all([
           getUserScans(),
           getSavedSites(),
-          getReviews(),
+          getMyReviews(),
         ]);
 
         setScans(scanData as ScanItem[]);
         setSavedWebsites(savedData as SavedSite[]);
-        setRecentComments(reviewData as Review[]);
+        setMyReviews(reviews);
       } catch (err: any) {
         console.error('Dashboard load error:', err);
         setError(err.message || 'Failed to load dashboard data.');
@@ -156,10 +148,10 @@ export function Dashboard() {
         { label: 'Total Scans', value: totalScans.toLocaleString(), icon: Globe },
         { label: 'Safe Sites', value: safeSites.toLocaleString(), icon: CheckCircle },
         { label: 'Warnings', value: warnings.toLocaleString(), icon: AlertTriangle },
-        { label: 'Reviews', value: recentComments.length.toLocaleString(), icon: MessageSquare },
+        { label: 'Reviews', value: myReviews.length.toLocaleString(), icon: MessageSquare },
       ],
     };
-  }, [scans, recentComments]);
+  }, [scans, myReviews]);
 
   const getRiskColor = (score: number) => {
     if (score <= 30) return 'text-green-600';
@@ -388,24 +380,24 @@ export function Dashboard() {
                 <h2 className="text-xl font-bold text-gray-900">Your Recent Reviews</h2>
               </div>
               <div className="space-y-4">
-                {recentComments.length === 0 ? (
+                {myReviews.length === 0 ? (
                   <p className="text-gray-500">No reviews yet.</p>
                 ) : (
-                  recentComments.map((comment) => (
-                    <div key={comment.id} className="p-4 rounded-lg border border-gray-100">
+                  myReviews.map((review) => (
+                    <div key={review.id} className="p-4 rounded-lg border border-gray-100">
                       <div className="flex items-start justify-between mb-2">
                         <Link
-                          to={`/insights/${encodeURIComponent(comment.url || comment.domain)}`}
+                          to={`/insights/${encodeURIComponent(review.url || review.domain)}`}
                           className="font-medium text-gray-900 hover:text-green-600 transition-colors"
                         >
-                          {comment.domain}
+                          {review.domain}
                         </Link>
                         <div className="flex items-center gap-1">
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
                               className={`w-4 h-4 ${
-                                i < comment.rating
+                                i < review.rating
                                   ? 'fill-yellow-400 text-yellow-400'
                                   : 'text-gray-300'
                               }`}
@@ -413,8 +405,8 @@ export function Dashboard() {
                           ))}
                         </div>
                       </div>
-                      <p className="text-gray-700 mb-2">{comment.comment}</p>
-                      <p className="text-sm text-gray-500">{formatDate(comment.date)}</p>
+                      <p className="text-gray-700 mb-2">{review.review}</p>
+                      <p className="text-sm text-gray-500">{formatDate(review.date)}</p>
                     </div>
                   ))
                 )}
