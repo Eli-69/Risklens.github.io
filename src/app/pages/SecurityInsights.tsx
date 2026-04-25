@@ -88,26 +88,38 @@ export function SecurityInsights() {
         setAnalysisData(data);
 
         try {
+          const result = data.result ?? data;
+
+          const savedRawScore =
+            typeof result.score === 'number'
+              ? result.score
+              : typeof result.riskScore === 'number'
+                ? result.riskScore
+                : typeof result.prediction_score === 'number'
+                  ? result.prediction_score * 100
+                  : typeof result.prob_phishing === 'number'
+                    ? result.prob_phishing * 100
+                    : 0;
+
           const savedScore =
-            typeof data.result?.score === 'number'
-              ? data.result.score
-              : typeof data.result?.riskScore === 'number'
-                ? data.result.riskScore
-                : 0;
+            savedRawScore <= 1
+              ? Math.round(savedRawScore * 100)
+              : Math.round(savedRawScore);
 
           const savedVerdict =
-            data.result?.verdict ??
-            (savedScore > 60
-              ? 'warning'
-              : savedScore > 30
-                ? 'moderate'
-                : 'legitimate');
+            result.verdict ??
+            result.classification ??
+            (savedScore >= 60
+              ? 'dangerous'
+              : savedScore >= 30
+                ? 'suspicious'
+                : 'safe');
 
           await saveScanResult({
             url: fullUrl,
             score: savedScore,
             verdict: savedVerdict,
-            source: data.source,
+            source: data.source ?? result.decision_source ?? 'ml',
           });
         } catch (saveError: any) {
           if (saveError?.message !== 'User not logged in') {
@@ -126,14 +138,44 @@ export function SecurityInsights() {
 
   const getRiskScoreColor = (score: number) => {
     if (score <= 30) return 'text-green-600';
-    if (score <= 60) return 'text-yellow-600';
+    if (score <= 60) return 'text-orange-500';
     return 'text-red-600';
   };
 
-  const getBarColor = (score: number) => {
-    if (score <= 30) return 'bg-green-500';
-    if (score <= 60) return 'bg-yellow-500';
-    return 'bg-red-500';
+  const getClassificationBadge = (classification: string) => {
+    switch (classification) {
+      case 'safe':
+      case 'legitimate':
+        return { bg: 'bg-green-100', text: 'text-green-700', label: 'Safe' };
+      case 'suspicious':
+      case 'warning':
+      case 'moderate':
+        return { bg: 'bg-yellow-100', text: 'text-yellow-700', label: 'Suspicious' };
+      case 'dangerous':
+      case 'phishing':
+      case 'malicious':
+        return { bg: 'bg-red-100', text: 'text-red-700', label: 'Dangerous' };
+      default:
+        return { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Unknown' };
+    }
+  };
+
+  const getRecommendedActionColor = (classification: string) => {
+    switch (classification) {
+      case 'safe':
+      case 'legitimate':
+        return 'border-green-600';
+      case 'suspicious':
+      case 'warning':
+      case 'moderate':
+        return 'border-yellow-600';
+      case 'dangerous':
+      case 'phishing':
+      case 'malicious':
+        return 'border-red-600';
+      default:
+        return 'border-gray-600';
+    }
   };
 
   const handleSubmitReview = () => {
@@ -167,68 +209,79 @@ export function SecurityInsights() {
     );
   }
 
-  const result = analysisData?.result ?? {};
+  const result = analysisData?.result ?? analysisData ?? {};
 
   const rawScore =
     typeof result.score === 'number'
       ? result.score
       : typeof result.riskScore === 'number'
         ? result.riskScore
-        : 0;
+        : typeof result.prediction_score === 'number'
+          ? result.prediction_score * 100
+          : typeof result.prob_phishing === 'number'
+            ? result.prob_phishing * 100
+            : 0;
 
-  const riskScore = Math.round(rawScore);
+  const riskScore =
+    rawScore <= 1 ? Math.round(rawScore * 100) : Math.round(rawScore);
 
-  const phishingScore =
-    typeof result.prob_phishing === 'number'
-      ? Math.round(result.prob_phishing * 100)
-      : 0;
+  const shouldWarn =
+    typeof result.should_warn === 'boolean'
+      ? result.should_warn
+      : riskScore >= 30;
 
-  const verdict =
-    result.verdict ??
-    (riskScore > 60
-      ? 'warning'
-      : riskScore > 30
-        ? 'moderate'
-        : 'legitimate');
+  const shouldBlock =
+    typeof result.should_block === 'boolean'
+      ? result.should_block
+      : riskScore >= 60;
 
-  const whyFlagged = Array.isArray(result.why_flagged)
+  const classification =
+    shouldBlock
+      ? 'dangerous'
+      : shouldWarn
+        ? 'suspicious'
+        : 'safe';
+
+  const recommendedAction =
+    shouldBlock
+      ? 'Do not use this site. It shows strong phishing or malicious patterns.'
+      : shouldWarn
+        ? 'Proceed with caution. This site shows some suspicious signals.'
+        : 'No major risks detected. This site appears safe based on the current scan.';
+
+  const aiOverview =
+    typeof result.ai_feedback === 'string' && result.ai_feedback.trim().length > 0
+      ? result.ai_feedback
+      : Array.isArray(result.why_flagged) && result.why_flagged.length > 0
+        ? result.why_flagged.join(' ')
+        : 'No detailed AI explanation was returned by the model.';
+
+  const signals = Array.isArray(result.why_flagged)
     ? result.why_flagged
-    : [];
+    : Array.isArray(result.signals)
+      ? result.signals
+      : [];
+
+  const certificateCheck = result.certificate_check ?? {};
+
+  const sslCertificate = {
+    checked: Boolean(certificateCheck.checked),
+    hasSSL: certificateCheck.checked ? Boolean(certificateCheck.cert_valid) : false,
+    isValid: certificateCheck.checked ? Boolean(certificateCheck.cert_valid) : false,
+    isExpired: certificateCheck.checked ? Boolean(certificateCheck.cert_expired) : false,
+  };
 
   const cleanDomain = displayDomain.split('/')[0];
 
   const siteData = {
     domain: displayDomain,
     logo: `https://logo.clearbit.com/${cleanDomain}`,
-    securityHistory: {
-      dataBreaches: 'No recent breach data',
-      serverCrash: 'No recent crash data',
-    },
     riskScore,
-    verdict,
-    whyFlagged,
-    source: analysisData?.source ?? 'unknown',
-    detailedAnalysis: {
-      security: {
-        score: riskScore,
-        text: `Verdict: ${verdict}`,
-      },
-      phishing: {
-        score: phishingScore,
-        text:
-          whyFlagged.length > 0
-            ? whyFlagged.join(', ')
-            : 'No major phishing signals detected.',
-      },
-      tracking: {
-        score: 0,
-        text: 'Tracking analysis not connected yet.',
-      },
-      aiFlags: {
-        score: 0,
-        text: 'AI flag details not connected yet.',
-      },
-    },
+    classification,
+    recommendedAction,
+    aiOverview,
+    signals,
+    sslCertificate,
     trustedSites: [
       'https://www.wikipedia.org',
       'https://archive.org',
@@ -260,6 +313,8 @@ export function SecurityInsights() {
       console.error('Failed to save site:', err);
     }
   };
+
+  const badge = getClassificationBadge(siteData.classification);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -298,21 +353,24 @@ export function SecurityInsights() {
 
               <div className="space-y-4">
                 <div>
-                  <div className={`text-3xl font-bold ${getRiskScoreColor(siteData.riskScore)} mb-1`}>
-                    Risk Score: {siteData.riskScore}
+                  <div className={`text-3xl font-bold ${getRiskScoreColor(siteData.riskScore)} mb-3`}>
+                    Risk Score: {siteData.riskScore}%
                   </div>
 
-                  <div className="text-gray-900 font-semibold">Verdict:</div>
-                  <div className="text-gray-700 capitalize">{siteData.verdict}</div>
+                  <div className="flex items-center gap-3 mb-3">
+                    <span className="text-gray-900 font-semibold">Classification:</span>
+                    <span className={`px-4 py-2 rounded-full font-semibold ${badge.bg} ${badge.text}`}>
+                      {badge.label}
+                    </span>
+                  </div>
 
-                  <div className="text-gray-900 font-semibold mt-4">Source:</div>
-                  <div className="text-gray-700">{siteData.source}</div>
-
-                  <div className="text-gray-900 font-semibold mt-4">Why flagged:</div>
-                  <div className="text-gray-700">
-                    {siteData.whyFlagged.length > 0
-                      ? siteData.whyFlagged.join(', ')
-                      : 'No major suspicious patterns detected.'}
+                  <div className={`bg-gray-100 border-l-4 ${getRecommendedActionColor(siteData.classification)} p-4 rounded`}>
+                    <div className="text-gray-900 font-semibold mb-1">
+                      Recommended Action:
+                    </div>
+                    <div className="text-gray-700 font-medium">
+                      {siteData.recommendedAction}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -320,27 +378,71 @@ export function SecurityInsights() {
 
             <div className="bg-white rounded-2xl border-2 border-gray-900 p-8">
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Detailed Analysis Report
+                AI Overview
               </h2>
 
               <div className="space-y-6">
-                {Object.entries(siteData.detailedAnalysis).map(([key, section]) => (
-                  <div key={key}>
-                    <div className="flex justify-between items-center mb-2">
-                      <h3 className="font-semibold text-gray-900 capitalize">
-                        {key === 'aiFlags' ? 'AI Flags' : key}
-                      </h3>
-                      <span className="text-sm text-gray-600">{section.score}%</span>
-                    </div>
-                    <div className="h-3 bg-gray-200 rounded-full overflow-hidden mb-2">
-                      <div
-                        className={`h-full ${getBarColor(section.score)}`}
-                        style={{ width: `${Math.min(section.score, 100)}%` }}
-                      />
-                    </div>
-                    <p className="text-sm text-gray-600">{section.text}</p>
+                <div>
+                  <p className="text-gray-700 leading-relaxed">
+                    {siteData.aiOverview}
+                  </p>
+                </div>
+
+                {siteData.signals.length > 0 && (
+                  <div className="border-t border-gray-200 pt-6">
+                    <h3 className="font-semibold text-gray-900 mb-4">
+                      Key Signals
+                    </h3>
+                    <ul className="space-y-2">
+                      {siteData.signals.map((signal: string, index: number) => (
+                        <li key={index} className="flex items-start gap-2 text-sm text-gray-700">
+                          <span className="mt-2 w-1.5 h-1.5 bg-gray-900 rounded-full flex-shrink-0" />
+                          <span>{signal}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                ))}
+                )}
+
+                <div className="border-t border-gray-200 pt-6">
+                  <h3 className="font-semibold text-gray-900 mb-4">
+                    SSL Certificate Status
+                  </h3>
+
+                  {siteData.sslCertificate.checked ? (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700">Certificate Checked:</span>
+                        <span className="font-semibold text-green-600">Yes ✓</span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700">Has Valid SSL Certificate:</span>
+                        <span className={`font-semibold ${siteData.sslCertificate.hasSSL ? 'text-green-600' : 'text-red-600'}`}>
+                          {siteData.sslCertificate.hasSSL ? 'Yes ✓' : 'No ✗'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700">Certificate Valid:</span>
+                        <span className={`font-semibold ${siteData.sslCertificate.isValid ? 'text-green-600' : 'text-red-600'}`}>
+                          {siteData.sslCertificate.isValid ? 'Yes ✓' : 'No ✗'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-gray-700">Certificate Expired:</span>
+                        <span className={`font-semibold ${siteData.sslCertificate.isExpired ? 'text-red-600' : 'text-green-600'}`}>
+                          {siteData.sslCertificate.isExpired ? 'Yes ✗' : 'No ✓'}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-600">
+                      Certificate check was not available for this scan.
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -353,7 +455,9 @@ export function SecurityInsights() {
                 <div className="flex items-start gap-4 mb-4">
                   <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0" />
                   <div className="flex-1">
-                    <div className="font-semibold text-gray-900 mb-1">User2361242692194</div>
+                    <div className="font-semibold text-gray-900 mb-1">
+                      User2361242692194
+                    </div>
                     <div className="flex gap-1 mb-2">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star key={star} className="size-4 fill-yellow-400 text-yellow-400" />
@@ -373,7 +477,9 @@ export function SecurityInsights() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block font-semibold text-gray-900 mb-2">Your Name:</label>
+                    <label className="block font-semibold text-gray-900 mb-2">
+                      Your Name:
+                    </label>
                     <Input
                       type="text"
                       placeholder="Enter your name..."
@@ -384,7 +490,9 @@ export function SecurityInsights() {
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-gray-900 mb-2">Your Rating:</label>
+                    <label className="block font-semibold text-gray-900 mb-2">
+                      Your Rating:
+                    </label>
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -395,7 +503,9 @@ export function SecurityInsights() {
                         >
                           <Star
                             className={`size-6 cursor-pointer transition-colors ${
-                              star <= userRating ? 'fill-yellow-400 text-yellow-400' : 'fill-none text-gray-400'
+                              star <= userRating
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'fill-none text-gray-400'
                             }`}
                           />
                         </button>
@@ -404,7 +514,9 @@ export function SecurityInsights() {
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-gray-900 mb-2">Your Review:</label>
+                    <label className="block font-semibold text-gray-900 mb-2">
+                      Your Review:
+                    </label>
                     <Textarea
                       placeholder="Share your experience good or bad..."
                       value={userReview}
@@ -464,7 +576,9 @@ export function SecurityInsights() {
       {showLoginPrompt && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl">
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Sign In Required</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              Sign In Required
+            </h2>
             <p className="text-gray-600 mb-6">
               You need to be logged in to save sites to your dashboard. Sign in now to keep track of your saved websites and their security scores.
             </p>
