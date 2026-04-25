@@ -53,8 +53,6 @@ export const dangerousSiteCategories = [
     saferAlternatives: [
       'https://ninite.com Safe installer for trusted free software',
       'https://softpedia.com Software downloads with review and safety checks',
-      'https://microsoft.com Official Microsoft software and updates',
-      'https://apple.com Official Apple software and support',
     ],
   },
   {
@@ -106,10 +104,8 @@ export const dangerousSiteCategories = [
       'Redirects to the real site after stealing credentials',
     ],
     saferAlternatives: [
-      'https://paypal.com Official PayPal login page',
-      'https://accounts.google.com Official Google account login',
-      'https://bankofamerica.com Official Bank of America website',
-      'Use a password manager to avoid autofilling fake domains',
+      'Always type the URL directly into the address bar',
+      "Use a password manager which won't autofill on fake domains",
     ],
   },
   {
@@ -125,9 +121,7 @@ export const dangerousSiteCategories = [
       'Requests unnecessary personal details',
     ],
     saferAlternatives: [
-      'https://amazon.com Official brand promotions should appear on verified company pages',
-      'https://apple.com Official Apple promotions and product information',
-      'Only trust giveaways posted on verified brand accounts',
+      'Legitimate giveaways only run on verified brand social media accounts',
     ],
   },
   {
