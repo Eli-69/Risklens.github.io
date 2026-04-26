@@ -114,9 +114,9 @@ export function SecurityInsights() {
           const savedVerdict =
             result.verdict ??
             result.classification ??
-            (savedScore >= 60
+            (savedScore >= 85
               ? 'dangerous'
-              : savedScore >= 30
+              : savedScore >= 50
                 ? 'suspicious'
                 : 'safe');
 
@@ -145,8 +145,8 @@ export function SecurityInsights() {
   }, [fullUrl]);
 
   const getRiskScoreColor = (score: number) => {
-    if (score <= 30) return 'text-green-600';
-    if (score <= 60) return 'text-orange-500';
+    if (score < 50) return 'text-green-600';
+    if (score < 85) return 'text-orange-500';
     return 'text-red-600';
   };
 
@@ -275,12 +275,12 @@ export function SecurityInsights() {
   const shouldWarn =
     typeof result.should_warn === 'boolean'
       ? result.should_warn
-      : riskScore >= 30;
+      : riskScore >= 50;
 
   const shouldBlock =
     typeof result.should_block === 'boolean'
       ? result.should_block
-      : riskScore >= 60;
+      : riskScore >= 85;
 
   const classification =
     shouldBlock
