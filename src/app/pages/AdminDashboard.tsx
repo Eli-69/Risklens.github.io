@@ -12,9 +12,10 @@ import {
   Star,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { getAllSiteReviews } from '../services/reviewService';
+import { getAllSiteScans } from '../services/scanService';
 
 type Stats = {
   totalUsers: number;
@@ -87,42 +88,85 @@ export function AdminDashboard() {
         setError('');
 
         const [
-          statsSnap,
-          sitesSnap,
+          usersSnap,
           activitySnap,
           helpSnap,
           reportsSnap,
           reviews,
+          scans,
         ] = await Promise.all([
-          getDoc(doc(db, 'adminStats', 'overview')),
-          getDocs(collection(db, 'frequentlyBrowsedSites')),
+          getDocs(collection(db, 'users')),
           getDocs(collection(db, 'recentActivity')),
           getDocs(collection(db, 'helpRequests')),
           getDocs(collection(db, 'siteReports')),
           getAllSiteReviews(),
+          getAllSiteScans(),
         ]);
 
-        if (statsSnap.exists()) {
-          const data = statsSnap.data();
-          setStats({
-            totalUsers: Number(data.totalUsers || 0),
-            totalScans: Number(data.totalScans || 0),
-            totalComments: Number(data.totalComments || 0),
-            activeSites: Number(data.activeSites || 0),
-            riskySites: Number(data.riskySites || 0),
-            safeSites: Number(data.safeSites || 0),
-          });
-        }
+        // Build stats from scans
+        const latestByDomain = new Map<string, any>();
+        scans.forEach((scan: any) => {
+          const domain = String(scan.domain || '');
+          if (!domain) return;
+          if (!latestByDomain.has(domain)) {
+            latestByDomain.set(domain, scan);
+          }
+        });
 
-        setFrequentlyBrowsedSites(
-          sitesSnap.docs.map((docItem) => ({
-            id: docItem.id,
-            domain: String(docItem.data().domain || ''),
-            scans: Number(docItem.data().scans || 0),
-            avgRisk: Number(docItem.data().avgRisk || 0),
-            status: String(docItem.data().status || 'safe'),
-          }))
-        );
+        let safeSites = 0;
+        let riskySites = 0;
+        latestByDomain.forEach((scan: any) => {
+          const score = Number(scan.score || 0);
+          if (score >= 60) {
+            riskySites += 1;
+          } else if (score < 30) {
+            safeSites += 1;
+          }
+        });
+
+        setStats({
+          totalUsers: usersSnap.size,
+          totalScans: scans.length,
+          totalComments: reviews.length,
+          activeSites: latestByDomain.size,
+          riskySites,
+          safeSites,
+        });
+
+        // Build frequently browsed sites from scans
+        const scanGroups = new Map<string, any[]>();
+        scans.forEach((scan: any) => {
+          const domain = String(scan.domain || '');
+          if (!domain) return;
+          if (!scanGroups.has(domain)) {
+            scanGroups.set(domain, []);
+          }
+          scanGroups.get(domain)?.push(scan);
+        });
+
+        const browsedSites = Array.from(scanGroups.entries())
+          .map(([domain, domainScans]) => {
+            const avgRisk =
+              domainScans.reduce((sum, scan) => sum + Number(scan.score || 0), 0) /
+              domainScans.length;
+            const roundedAvg = Math.round(avgRisk);
+            return {
+              id: domain,
+              domain,
+              scans: domainScans.length,
+              avgRisk: roundedAvg,
+              status:
+                roundedAvg >= 60
+                  ? 'dangerous'
+                  : roundedAvg >= 30
+                    ? 'moderate'
+                    : 'safe',
+            };
+          })
+          .sort((a, b) => b.scans - a.scans)
+          .slice(0, 10);
+
+        setFrequentlyBrowsedSites(browsedSites);
 
         setRecentActivity(
           activitySnap.docs.map((docItem) => ({
@@ -309,7 +353,7 @@ export function AdminDashboard() {
               <h3 className="font-semibold text-gray-900">Safe Sites</h3>
             </div>
             <p className="text-3xl font-bold text-green-600 mb-2">{stats.safeSites.toLocaleString()}</p>
-            <p className="text-sm text-gray-600">Risk score below 20</p>
+            <p className="text-sm text-gray-600">Risk score below 30</p>
           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -322,7 +366,7 @@ export function AdminDashboard() {
             <p className="text-3xl font-bold text-yellow-600 mb-2">
               {moderateRiskCount.toLocaleString()}
             </p>
-            <p className="text-sm text-gray-600">Risk score 20-50</p>
+            <p className="text-sm text-gray-600">Risk score 30–59</p>
           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -333,7 +377,7 @@ export function AdminDashboard() {
               <h3 className="font-semibold text-gray-900">High Risk Sites</h3>
             </div>
             <p className="text-3xl font-bold text-red-600 mb-2">{stats.riskySites.toLocaleString()}</p>
-            <p className="text-sm text-gray-600">Risk score above 50</p>
+            <p className="text-sm text-gray-600">Risk score 60 or above</p>
           </div>
         </div>
 
@@ -465,7 +509,6 @@ export function AdminDashboard() {
           </div>
         </div>
 
-        {/* All Site Reviews */}
         <div className="mt-6 bg-white rounded-xl p-6 shadow-sm border border-gray-200">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -541,8 +584,6 @@ export function AdminDashboard() {
           </div>
         </div>
       </div>
-
-
 
       <Footer />
     </div>
