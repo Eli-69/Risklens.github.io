@@ -17,29 +17,20 @@ export function SecurityInsights() {
 
   const decodedInput = domain ? decodeURIComponent(domain).trim() : '';
 
-  function normalizeUrl(input: string) {
-    if (!input) return '';
-
-    let url = input.startsWith('http') ? input : `https://${input}`;
-
+  function normalizeUrl(input: string): string {
     try {
-      const parsed = new URL(url);
+      let url = input.trim();
 
-      if (
-        !parsed.hostname.startsWith('www.') &&
-        parsed.hostname.split('.').length === 2
-      ) {
-        parsed.hostname = `www.${parsed.hostname}`;
+      if (!url.startsWith('http')) {
+        url = 'https://' + url;
       }
 
-      if (!parsed.pathname || parsed.pathname === '') {
-        parsed.pathname = '/';
-      }
+      // ✅ Keep FULL URL (path + query)
+      return new URL(url).toString();
 
-      return parsed.toString();
     } catch {
-      return url;
-    }
+      return input;
+    } 
   }
 
   const fullUrl = normalizeUrl(decodedInput);
