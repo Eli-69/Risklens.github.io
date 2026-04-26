@@ -63,12 +63,6 @@ export function SecurityInsights() {
   const [reviewError, setReviewError] = useState('');
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [reportReason, setReportReason] = useState('');
-  const [reportError, setReportError] = useState('');
-  const [reportSubmitting, setReportSubmitting] = useState(false);
-  const [reportSubmitted, setReportSubmitted] = useState(false);
-
   useEffect(() => {
     async function loadInsights() {
       if (!fullUrl) return;
@@ -235,52 +229,6 @@ export function SecurityInsights() {
       setReviewError(err.message || 'Failed to submit review.');
     } finally {
       setReviewSubmitting(false);
-    }
-  };
-
-  const handleSubmitClassificationReport = async () => {
-    try {
-      setReportSubmitting(true);
-      setReportError('');
-
-      if (!reportReason.trim()) {
-        setReportError('Please explain why the classification is incorrect.');
-        return;
-      }
-
-      const response = await fetch('/api/report-incorrect', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          url: fullUrl,
-          domain: displayDomain,
-          classification: siteData.classification,
-          riskScore: siteData.riskScore,
-          reason: reportReason.trim(),
-          userEmail: auth.currentUser?.email || 'Not signed in',
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to submit report.');
-      }
-
-      setReportSubmitted(true);
-
-      setTimeout(() => {
-        setShowReportModal(false);
-        setReportSubmitted(false);
-        setReportReason('');
-        setReportError('');
-      }, 2000);
-    } catch (err: any) {
-      setReportError(err.message || 'Failed to submit report.');
-    } finally {
-      setReportSubmitting(false);
     }
   };
 
@@ -566,12 +514,11 @@ export function SecurityInsights() {
                   <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4">
                     <button
                       type="button"
-                      onClick={() => {
-                        setShowReportModal(true);
-                        setReportError('');
-                        setReportReason('');
-                        setReportSubmitted(false);
-                      }}
+                      onClick={() =>
+                        navigate(
+                          `/report-site?url=${encodeURIComponent(fullUrl)}&category=${encodeURIComponent('Incorrect Classification')}`
+                        )
+                      }
                       className="flex items-center gap-2 text-orange-700 hover:text-orange-900 font-semibold transition-colors"
                     >
                       <Flag className="size-5" />
@@ -813,7 +760,7 @@ export function SecurityInsights() {
       <Footer />
 
       {showLoginPrompt && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-3">
               Sign In Required
@@ -838,85 +785,6 @@ export function SecurityInsights() {
                 Sign In
               </Button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {showReportModal && (
-        <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl">
-            {reportSubmitted ? (
-              <div className="text-center py-4">
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                  <Flag className="w-8 h-8 text-green-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Report Submitted
-                </h2>
-                <p className="text-gray-600">
-                  Thank you for helping us improve our classification accuracy.
-                </p>
-              </div>
-            ) : (
-              <>
-                <h2 className="text-2xl font-bold text-gray-900 mb-3">
-                  Report Incorrect Classification
-                </h2>
-
-                <p className="text-gray-600 mb-4">
-                  Help us improve by explaining why you think this site&apos;s classification is incorrect.
-                </p>
-
-                <div className="bg-gray-50 rounded-lg p-3 mb-4 text-sm text-gray-700">
-                  <p><span className="font-semibold">Site:</span> {siteData.domain}</p>
-                  <p><span className="font-semibold">Current classification:</span> {badge.label}</p>
-                  <p><span className="font-semibold">Risk score:</span> {siteData.riskScore}%</p>
-                </div>
-
-                <div className="mb-6">
-                  <label htmlFor="reportReason" className="block text-sm font-medium text-gray-700 mb-2">
-                    Please explain the issue: <span className="text-red-600">*</span>
-                  </label>
-
-                  <Textarea
-                    id="reportReason"
-                    value={reportReason}
-                    onChange={(e) => {
-                      setReportReason(e.target.value);
-                      if (reportError) setReportError('');
-                    }}
-                    placeholder="Example: This site is actually safe, or this site should be marked dangerous because..."
-                    className="w-full min-h-32 border-2 border-gray-300 rounded-lg"
-                  />
-                </div>
-
-                {reportError && (
-                  <p className="text-sm text-red-600 mb-4">{reportError}</p>
-                )}
-
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => {
-                      setShowReportModal(false);
-                      setReportReason('');
-                      setReportError('');
-                    }}
-                    variant="outline"
-                    className="flex-1 border-gray-300 hover:bg-gray-50"
-                  >
-                    Cancel
-                  </Button>
-
-                  <Button
-                    onClick={handleSubmitClassificationReport}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                    disabled={reportSubmitting || !reportReason.trim()}
-                  >
-                    {reportSubmitting ? 'Submitting...' : 'Submit Report'}
-                  </Button>
-                </div>
-              </>
-            )}
           </div>
         </div>
       )}

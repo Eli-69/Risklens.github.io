@@ -5,11 +5,16 @@ import { Button } from '../components/ui/button';
 import { useState } from 'react';
 import { submitSiteReport } from '../services/reportService';
 import emailjs from '@emailjs/browser';
+import { useSearchParams } from 'react-router';
 
 export function ReportSite() {
-  const [url, setUrl] = useState('');
+  const [searchParams] = useSearchParams();
+  const prefilledUrl = searchParams.get('url') || '';
+  const prefilledCategory = searchParams.get('category') || '';
+
+  const [url, setUrl] = useState(prefilledUrl);
   const [description, setDescription] = useState('');
-  const [category, setCategory] = useState('');
+  const [category, setCategory] = useState(prefilledCategory || '');
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -66,6 +71,7 @@ export function ReportSite() {
     'Identity Theft',
     'Illegal Content',
     'Privacy Violation',
+    'Incorrect Classification',
     'Other',
   ];
 
