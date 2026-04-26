@@ -118,9 +118,9 @@ export function AdminDashboard() {
         let riskySites = 0;
         latestByDomain.forEach((scan: any) => {
           const score = Number(scan.score || 0);
-          if (score >= 60) {
+          if (score >= 85) {
             riskySites += 1;
-          } else if (score < 30) {
+          } else if (score < 50) {
             safeSites += 1;
           }
         });
@@ -157,9 +157,9 @@ export function AdminDashboard() {
               scans: domainScans.length,
               avgRisk: roundedAvg,
               status:
-                roundedAvg >= 60
+                roundedAvg >= 85
                   ? 'dangerous'
-                  : roundedAvg >= 30
+                  : roundedAvg >= 50
                     ? 'moderate'
                     : 'safe',
             };
@@ -237,8 +237,8 @@ export function AdminDashboard() {
   };
 
   const getRiskColor = (risk: number) => {
-    if (risk < 20) return 'text-green-600';
-    if (risk < 50) return 'text-yellow-600';
+    if (risk < 50) return 'text-green-600';
+    if (risk < 85) return 'text-yellow-600';
     return 'text-red-600';
   };
 
@@ -361,7 +361,7 @@ export function AdminDashboard() {
               <h3 className="font-semibold text-gray-900">Safe Sites</h3>
             </div>
             <p className="text-3xl font-bold text-green-600 mb-2">{stats.safeSites.toLocaleString()}</p>
-            <p className="text-sm text-gray-600">Risk score below 30</p>
+            <p className="text-sm text-gray-600">Risk score below 50</p>
           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -374,7 +374,7 @@ export function AdminDashboard() {
             <p className="text-3xl font-bold text-yellow-600 mb-2">
               {moderateRiskCount.toLocaleString()}
             </p>
-            <p className="text-sm text-gray-600">Risk score 30–59</p>
+            <p className="text-sm text-gray-600">Risk score 50–84</p>
           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -385,7 +385,7 @@ export function AdminDashboard() {
               <h3 className="font-semibold text-gray-900">High Risk Sites</h3>
             </div>
             <p className="text-3xl font-bold text-red-600 mb-2">{stats.riskySites.toLocaleString()}</p>
-            <p className="text-sm text-gray-600">Risk score 60 or above</p>
+            <p className="text-sm text-gray-600">Risk score 85 or above</p>
           </div>
         </div>
 
@@ -458,7 +458,7 @@ export function AdminDashboard() {
                   <p className="text-xs text-gray-500">
                     {activity.time}
                   </p>
-                  
+
                 </div>
               ))}
               {recentActivity.length === 0 && (
