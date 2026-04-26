@@ -5,18 +5,8 @@ import { useAuth } from '../context/AuthContext';
 import { logout } from '../services/authService';
 import { useState } from 'react';
 
-const EXTENSION_DOWNLOAD_URL =
-  'https://www.dropbox.com/scl/fi/ps7etwundoqoqsvwvbyvu/2af5fb087f874d69888b-0.4.2.xpi?rlkey=3dml3inbmfrgsf9bi8z9h1dds&st=e1fnz0nr&dl=1';
-
 export function Navigation() {
   const { user, loading, isAuthenticated, isAdmin } = useAuth();
-
-  console.log('NAV STATE:', {
-    email: user?.email,
-    loading,
-    isAuthenticated,
-    isAdmin,
-  });
 
   const navigate = useNavigate();
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
@@ -41,6 +31,7 @@ export function Navigation() {
 
   return (
     <>
+      {/* 🔥 FIXED NAVBAR */}
       <nav className="fixed top-0 left-0 w-full z-50 bg-white border-b border-gray-200 shadow-sm">
         <div className="container mx-auto px-6">
           <div className="flex items-center justify-between h-16">
@@ -52,22 +43,28 @@ export function Navigation() {
                   className="h-12 w-auto transition-transform duration-300 hover:scale-110"
                 />
               </div>
-              <span className="text-xl font-semibold text-gray-900">RiskLens</span>
+              <span className="text-xl font-semibold text-gray-900">
+                RiskLens
+              </span>
             </Link>
 
             <div className="hidden md:flex items-center gap-8">
               <Link to="/" className="text-gray-700 hover:text-gray-900 transition-colors">
                 Home
               </Link>
+
               <Link to="/report-site" className="text-gray-700 hover:text-gray-900 transition-colors">
                 Report a site
               </Link>
+
               <Link to="/whos-at-risk" className="text-gray-700 hover:text-gray-900 transition-colors">
                 Safety Guide
               </Link>
+
               <Link to="/help" className="text-gray-700 hover:text-gray-900 transition-colors">
                 Help
               </Link>
+
               <Link to="/dashboard" className="text-gray-700 hover:text-gray-900 transition-colors">
                 Dashboard
               </Link>
@@ -95,8 +92,9 @@ export function Navigation() {
               )}
             </div>
 
+            {/* 🔗 EXTENSION DOWNLOAD BUTTON */}
             <a
-              href={EXTENSION_DOWNLOAD_URL}
+              href="https://www.dropbox.com/scl/fi/ps7etwundoqoqsvwvbyvu/2af5fb087f874d69888b-0.4.2.xpi?rlkey=3dml3inbmfrgsf9bi8z9h1dds&st=e1fnz0nr&dl=1"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -108,10 +106,17 @@ export function Navigation() {
         </div>
       </nav>
 
+      {/* 🔥 THIS FIXES OVERLAP EVERYWHERE */}
+      <div className="h-16"></div>
+
+      {/* 🔐 SIGN OUT MODAL */}
       {showSignOutConfirm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl">
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Sign Out?</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-3">
+              Sign Out?
+            </h2>
+
             <p className="text-gray-600 mb-6">
               Are you sure you want to sign out? You&apos;ll need to log in again to access your dashboard and saved data.
             </p>
