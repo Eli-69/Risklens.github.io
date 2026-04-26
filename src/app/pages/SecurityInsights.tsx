@@ -843,7 +843,7 @@ export function SecurityInsights() {
       )}
 
       {showReportModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+        <div className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl">
             {reportSubmitted ? (
               <div className="text-center py-4">
