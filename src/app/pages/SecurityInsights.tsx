@@ -97,10 +97,7 @@ export function SecurityInsights() {
                     ? result.prob_phishing * 100
                     : 0;
 
-          const savedScore =
-            savedRawScore <= 1
-              ? Math.round(savedRawScore * 100)
-              : Math.round(savedRawScore);
+          const savedScore = Math.round(savedRawScore);
 
           const savedVerdict =
             result.verdict ??
