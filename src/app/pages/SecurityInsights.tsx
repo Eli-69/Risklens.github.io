@@ -259,8 +259,7 @@ export function SecurityInsights() {
             ? result.prob_phishing * 100
             : 0;
 
-  const riskScore =
-    rawScore <= 1 ? Math.round(rawScore * 100) : Math.round(rawScore);
+  const riskScore = Math.round(rawScore);
 
   const shouldWarn =
     typeof result.should_warn === 'boolean'
