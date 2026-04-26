@@ -125,6 +125,7 @@ export function SecurityInsights() {
             score: savedScore,
             verdict: savedVerdict,
             source: data.source ?? result.decision_source ?? 'ml',
+            modelResult: result,
           });
         } catch (saveError: any) {
           if (saveError?.message !== 'User not logged in') {
