@@ -5,15 +5,18 @@ import { useAuth } from '../context/AuthContext';
 import { logout } from '../services/authService';
 import { useState } from 'react';
 
+const EXTENSION_DOWNLOAD_URL =
+  'https://www.dropbox.com/scl/fi/ps7etwundoqoqsvwvbyvu/2af5fb087f874d69888b-0.4.2.xpi?rlkey=3dml3inbmfrgsf9bi8z9h1dds&st=e1fnz0nr&dl=1';
+
 export function Navigation() {
   const { user, loading, isAuthenticated, isAdmin } = useAuth();
 
   console.log('NAV STATE:', {
-  email: user?.email,
-  loading,
-  isAuthenticated,
-  isAdmin,
-});
+    email: user?.email,
+    loading,
+    isAuthenticated,
+    isAdmin,
+  });
 
   const navigate = useNavigate();
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
@@ -92,9 +95,15 @@ export function Navigation() {
               )}
             </div>
 
-            <Button className="bg-green-600 hover:bg-green-700 text-white rounded-md">
-              Add to Browser
-            </Button>
+            <a
+              href={EXTENSION_DOWNLOAD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button className="bg-green-600 hover:bg-green-700 text-white rounded-md">
+                Add to Browser
+              </Button>
+            </a>
           </div>
         </div>
       </nav>

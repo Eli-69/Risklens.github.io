@@ -23,6 +23,9 @@ import {
 import { Link } from 'react-router';
 import { dangerousSiteCategories } from '../data/dangerousCategories';
 
+const EXTENSION_DOWNLOAD_URL =
+  'https://www.dropbox.com/scl/fi/ps7etwundoqoqsvwvbyvu/2af5fb087f874d69888b-0.4.2.xpi?rlkey=3dml3inbmfrgsf9bi8z9h1dds&st=e1fnz0nr&dl=1';
+
 export function WhosAtRisk() {
   const scamCategories = dangerousSiteCategories;
 
@@ -331,9 +334,16 @@ export function WhosAtRisk() {
               real-time security analysis, instant warnings about dangerous sites, and automatic
               suggestions for safer alternatives as you browse.
             </p>
-            <button className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors">
-              Add to Browser
-            </button>
+
+            <a
+              href={EXTENSION_DOWNLOAD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <button className="px-8 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors">
+                Add to Browser
+              </button>
+            </a>
           </div>
         </div>
       </main>

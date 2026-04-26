@@ -17,6 +17,9 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
 
+const EXTENSION_DOWNLOAD_URL =
+  'https://www.dropbox.com/scl/fi/ps7etwundoqoqsvwvbyvu/2af5fb087f874d69888b-0.4.2.xpi?rlkey=3dml3inbmfrgsf9bi8z9h1dds&st=e1fnz0nr&dl=1';
+
 export function Hero() {
   const [url, setUrl] = useState('');
   const [selectedTld, setSelectedTld] = useState('.com');
@@ -153,9 +156,15 @@ export function Hero() {
                     Check if your websites are safe
                   </p>
 
-                  <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mb-6">
-                    Add to browser
-                  </Button>
+                  <a
+                    href={EXTENSION_DOWNLOAD_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mb-6">
+                      Add to browser
+                    </Button>
+                  </a>
 
                   <div className="relative">
                     <div className="relative flex items-center bg-green-600 rounded-full h-14">
@@ -308,10 +317,16 @@ export function Hero() {
                   </div>
 
                   <div className="flex gap-4">
-                    <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mt-8">
-                      <Download className="mr-2 size-4" />
-                      Add to Browser
-                    </Button>
+                    <a
+                      href={EXTENSION_DOWNLOAD_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mt-8">
+                        <Download className="mr-2 size-4" />
+                        Add to Browser
+                      </Button>
+                    </a>
 
                     <Link to="/how-it-works">
                       <Button
@@ -378,11 +393,11 @@ export function Hero() {
                     </div>
                   </div>
 
-                  <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12">
-                    <Link to="/help">
+                  <Link to="/help">
+                    <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12">
                       Contact Support
-                    </Link>
-                  </Button>
+                    </Button>
+                  </Link>
                 </div>
 
                 <div className="relative">
