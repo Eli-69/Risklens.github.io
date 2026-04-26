@@ -19,24 +19,34 @@ import {
 } from "firebase/firestore";
 
 import { auth, db } from "../../lib/firebase";
-import { logActivity } from "../services/activityService"; // ✅ ADDED
+import { logActivity } from "../services/activityService";
 
 const provider = new GoogleAuthProvider();
 
 export async function loginWithGoogle(): Promise<User> {
   const result = await signInWithPopup(auth, provider);
 
+  const userRef = doc(db, "users", result.user.uid);
+  const userSnap = await getDoc(userRef);
+
+  const isNewUser = !userSnap.exists();
+
   await setDoc(
-    doc(db, "users", result.user.uid),
+    userRef,
     {
       uid: result.user.uid,
       email: result.user.email,
       displayName: result.user.displayName || "",
       photoURL: result.user.photoURL || "",
-      createdAt: serverTimestamp(),
+      createdAt: isNewUser ? serverTimestamp() : userSnap.data()?.createdAt,
+      lastLoginAt: serverTimestamp(),
     },
     { merge: true }
   );
+
+  if (isNewUser) {
+    await logActivity("New account registered", result.user.uid);
+  }
 
   return result.user;
 }
@@ -48,8 +58,7 @@ export async function resetPassword(email: string): Promise<void> {
 export async function signup(email: string, password: string): Promise<User> {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
 
-  // ✅ ADDED LOG
-  await logActivity('New account registered', email);
+  await logActivity("New account registered", cred.user.uid);
 
   await setDoc(
     doc(db, "users", cred.user.uid),
