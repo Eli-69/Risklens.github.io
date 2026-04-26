@@ -20,6 +20,7 @@ import { useNavigate, Link } from 'react-router';
 export function Hero() {
   const [url, setUrl] = useState('');
   const [selectedTld, setSelectedTld] = useState('.com');
+  const [customTld, setCustomTld] = useState('');
   const [isPaused, setIsPaused] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -48,6 +49,7 @@ export function Hero() {
     '.cn',
     '.in',
     '.au',
+    'Other...',
   ];
 
   const handleAnalyze = async () => {
@@ -64,7 +66,19 @@ export function Hero() {
       domain = domain.split('/')[0];
 
       if (!domain.includes('.')) {
-        domain = `${domain}${selectedTld}`;
+        const chosenTld =
+          selectedTld === 'Other...'
+            ? customTld.trim().startsWith('.')
+              ? customTld.trim()
+              : `.${customTld.trim()}`
+            : selectedTld;
+
+        if (!chosenTld || chosenTld === '.') {
+          setSearchError('Please enter a custom TLD.');
+          return;
+        }
+
+        domain = `${domain}${chosenTld}`;
       }
 
       const response = await fetch('/api/resolve-site', {
@@ -116,7 +130,7 @@ export function Hero() {
   }, [isPaused]);
 
   return (
-    <section className="relative overflow-hidden bg-gray-50 pt-30 pb-16">
+    <section className="relative overflow-hidden bg-gray-50 pt-20 pb-16">
       <div className="container mx-auto px-6">
         <AnimatePresence mode="wait">
           {currentSlide === 0 && (
@@ -134,6 +148,7 @@ export function Hero() {
                     <br />
                     <span className="text-green-600">Browse with confidence.</span>
                   </h1>
+
                   <p className="text-gray-600 mb-8 text-lg">
                     Check if your websites are safe
                   </p>
@@ -163,9 +178,12 @@ export function Hero() {
                       <div className="relative">
                         <select
                           value={selectedTld}
-                          onChange={(e) => setSelectedTld(e.target.value)}
+                          onChange={(e) => {
+                            setSelectedTld(e.target.value);
+                            if (searchError) setSearchError('');
+                          }}
                           onFocus={() => setIsPaused(true)}
-                          className="h-14 pl-4 pr-10 bg-transparent border-0 text-white text-base cursor-pointer appearance-none focus:outline-none focus:ring-0 min-w-[90px]"
+                          className="h-14 pl-4 pr-10 bg-transparent border-0 text-white text-base cursor-pointer appearance-none focus:outline-none focus:ring-0 min-w-[100px]"
                           style={{
                             backgroundImage: 'none',
                             WebkitAppearance: 'none',
@@ -182,6 +200,7 @@ export function Hero() {
                             </option>
                           ))}
                         </select>
+
                         <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 size-4 text-white pointer-events-none" />
                       </div>
 
@@ -196,6 +215,20 @@ export function Hero() {
                         <Search className="size-5" />
                       </button>
                     </div>
+
+                    {selectedTld === 'Other...' && (
+                      <Input
+                        type="text"
+                        placeholder="Enter custom TLD, ex: .xyz"
+                        value={customTld}
+                        onFocus={() => setIsPaused(true)}
+                        onChange={(e) => {
+                          setCustomTld(e.target.value);
+                          if (searchError) setSearchError('');
+                        }}
+                        className="mt-3 w-48 border border-gray-300 rounded-lg bg-white"
+                      />
+                    )}
 
                     {searchError && (
                       <p className="mt-3 text-sm text-red-600">
@@ -237,6 +270,7 @@ export function Hero() {
                     <br />
                     <span className="text-green-600">RiskLens Extension</span>
                   </h1>
+
                   <p className="text-gray-600 mb-8 text-lg">
                     Get started in 3 simple steps
                   </p>
@@ -317,6 +351,7 @@ export function Hero() {
                     <br />
                     <span className="text-green-600">We&apos;re here to help</span>
                   </h1>
+
                   <p className="text-gray-600 mb-8 text-lg">
                     Have questions or feedback? Get in touch with our team
                   </p>
