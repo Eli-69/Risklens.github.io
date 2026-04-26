@@ -19,6 +19,7 @@ import {
 } from "firebase/firestore";
 
 import { auth, db } from "../../lib/firebase";
+import { logActivity } from "../services/activityService"; // ✅ ADDED
 
 const provider = new GoogleAuthProvider();
 
@@ -46,6 +47,9 @@ export async function resetPassword(email: string): Promise<void> {
 
 export async function signup(email: string, password: string): Promise<User> {
   const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+  // ✅ ADDED LOG
+  await logActivity('New account registered', email);
 
   await setDoc(
     doc(db, "users", cred.user.uid),

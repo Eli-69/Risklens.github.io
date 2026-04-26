@@ -10,6 +10,7 @@ import { saveScanResult } from '../services/scanService';
 import { saveSite } from '../services/dashboardService';
 import { submitSiteReview, getReviewsForSite } from '../services/reviewService';
 import { auth } from '../../lib/firebase';
+import { logActivity } from '../services/activityService';
 
 export function SecurityInsights() {
   const { domain } = useParams();
@@ -116,6 +117,9 @@ export function SecurityInsights() {
             source: data.source ?? result.decision_source ?? 'ml',
             modelResult: result,
           });
+
+          await logActivity('Site scanned', fullUrl);
+
         } catch (saveError: any) {
           if (saveError?.message !== 'User not logged in') {
             console.log('Scan not saved:', saveError);
@@ -433,6 +437,8 @@ export function SecurityInsights() {
         url: fullUrl,
         riskScore: siteData.riskScore,
       });
+
+      await logActivity('Site saved to dashboard', cleanDomain);
 
       setSiteSaved(true);
       setTimeout(() => setSiteSaved(false), 3000);

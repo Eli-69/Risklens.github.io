@@ -16,6 +16,7 @@ import { Textarea } from '../components/ui/textarea';
 import { useState } from 'react';
 import emailjs from '@emailjs/browser';
 import { submitHelpRequest } from '../services/helpService';
+import { logActivity } from '../services/activityService';
 
 export function Help() {
   const [name, setName] = useState('');
@@ -39,6 +40,8 @@ export function Help() {
         subject,
         message,
       });
+
+      await logActivity('Help request submitted', subject);
 
       await emailjs.send(
         import.meta.env.VITE_EMAILJS_SERVICE_ID,

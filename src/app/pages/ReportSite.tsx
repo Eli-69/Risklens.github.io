@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { submitSiteReport } from '../services/reportService';
 import emailjs from '@emailjs/browser';
 import { useSearchParams } from 'react-router';
+import { logActivity } from '../services/activityService';
 
 export function ReportSite() {
   const [searchParams] = useSearchParams();
@@ -31,6 +32,8 @@ export function ReportSite() {
       category,
       description,
     });
+
+    await logActivity('Site report submitted', url);
 
     await emailjs.send(
       import.meta.env.VITE_EMAILJS_SERVICE_ID,
