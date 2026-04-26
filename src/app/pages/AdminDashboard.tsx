@@ -12,7 +12,7 @@ import {
   Star,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { getAllSiteReviews } from '../services/reviewService';
 import { getAllSiteScans } from '../services/scanService';
@@ -37,6 +37,7 @@ type FrequentlyBrowsedSite = {
 type RecentActivityItem = {
   id: string;
   action: string;
+  details: string;
   user: string;
   time: string;
 };
@@ -96,7 +97,7 @@ export function AdminDashboard() {
           scans,
         ] = await Promise.all([
           getDocs(collection(db, 'users')),
-          getDocs(collection(db, 'recentActivity')),
+          getDocs(query(collection(db, 'recentActivity'), orderBy('time', 'desc'))),
           getDocs(collection(db, 'helpRequests')),
           getDocs(collection(db, 'siteReports')),
           getAllSiteReviews(),
@@ -169,12 +170,19 @@ export function AdminDashboard() {
         setFrequentlyBrowsedSites(browsedSites);
 
         setRecentActivity(
-          activitySnap.docs.map((docItem) => ({
-            id: docItem.id,
-            action: String(docItem.data().action || ''),
-            user: String(docItem.data().user || ''),
-            time: String(docItem.data().time || ''),
-          }))
+          activitySnap.docs.map((docItem) => {
+            const data = docItem.data();
+            
+            return {
+              id: docItem.id,
+              action: String(data.action || ''),
+              details: String(data.details || ''),
+              user: String(data.user || 'Anonymous'),
+              time: data.time?.toDate
+                ? data.time.toDate().toLocaleString()
+                : 'Unknown date',
+            };
+          })
         );
 
         setHelpRequests(
@@ -433,9 +441,24 @@ export function AdminDashboard() {
             <div className="space-y-4">
               {recentActivity.map((activity) => (
                 <div key={activity.id} className="pb-4 border-b border-gray-100 last:border-0">
-                  <p className="font-medium text-gray-900 text-sm mb-1">{activity.action}</p>
-                  <p className="text-sm text-gray-600 mb-1">{activity.user}</p>
-                  <p className="text-xs text-gray-500">{activity.time}</p>
+                  <p className="font-medium text-gray-900 text-sm mb-1">
+                    {activity.action}
+                  </p>
+
+                  {activity.details && (
+                    <p className="text-sm text-gray-600 mb-1 break-all">
+                      {activity.details}
+                    </p>
+                  )}
+
+                  <p className="text-sm text-gray-600 mb-1">
+                    {activity.user}
+                  </p>
+                  
+                  <p className="text-xs text-gray-500">
+                    {activity.time}
+                  </p>
+                  
                 </div>
               ))}
               {recentActivity.length === 0 && (
