@@ -98,6 +98,7 @@ export function SecurityInsights() {
                     : 0;
 
           const savedScore = Math.round(savedRawScore);
+          console.log(savedScore);
 
           const savedVerdict =
             result.verdict ??
