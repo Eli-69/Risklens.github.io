@@ -61,6 +61,7 @@ export default async function handler(req, res) {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "x-api-key": process.env.RISKLENS_API_KEY,
       },
       body: JSON.stringify({
         url: normalizedUrl,
