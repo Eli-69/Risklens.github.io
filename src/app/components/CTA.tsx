@@ -2,7 +2,7 @@ import { motion } from 'motion/react';
 import { Button } from './ui/button';
 
 const EXTENSION_DOWNLOAD_URL =
-  'https://www.dropbox.com/scl/fi/ps7etwundoqoqsvwvbyvu/2af5fb087f874d69888b-0.4.2.xpi?rlkey=3dml3inbmfrgsf9bi8z9h1dds&st=e1fnz0nr&dl=1';
+  'https://github.com/unixthug/risk-lens-phishing-detection/releases';
 
 export function CTA() {
   return (

@@ -94,7 +94,7 @@ export function Navigation() {
 
             {/* 🔗 EXTENSION DOWNLOAD BUTTON */}
             <a
-              href="https://www.dropbox.com/scl/fi/ps7etwundoqoqsvwvbyvu/2af5fb087f874d69888b-0.4.2.xpi?rlkey=3dml3inbmfrgsf9bi8z9h1dds&st=e1fnz0nr&dl=1"
+              href="https://github.com/unixthug/risk-lens-phishing-detection/releases"
               target="_blank"
               rel="noopener noreferrer"
             >
