@@ -1,14 +1,29 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Shield, ArrowRight, Search, Download, Globe, Mail, MessageCircle, ChevronDown } from 'lucide-react';
+import {
+  Shield,
+  ArrowRight,
+  Search,
+  Download,
+  Globe,
+  Mail,
+  MessageCircle,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
 
+const EXTENSION_DOWNLOAD_URL =
+  'https://www.dropbox.com/scl/fi/ps7etwundoqoqsvwvbyvu/2af5fb087f874d69888b-0.4.2.xpi?rlkey=3dml3inbmfrgsf9bi8z9h1dds&st=e1fnz0nr&dl=1';
+
 export function Hero() {
   const [url, setUrl] = useState('');
   const [selectedTld, setSelectedTld] = useState('.com');
+  const [customTld, setCustomTld] = useState('');
   const [isPaused, setIsPaused] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -37,6 +52,7 @@ export function Hero() {
     '.cn',
     '.in',
     '.au',
+    'Other...',
   ];
 
   const handleAnalyze = async () => {
@@ -53,7 +69,19 @@ export function Hero() {
       domain = domain.split('/')[0];
 
       if (!domain.includes('.')) {
-        domain = `${domain}${selectedTld}`;
+        const chosenTld =
+          selectedTld === 'Other...'
+            ? customTld.trim().startsWith('.')
+              ? customTld.trim()
+              : `.${customTld.trim()}`
+            : selectedTld;
+
+        if (!chosenTld || chosenTld === '.') {
+          setSearchError('Please enter a custom TLD.');
+          return;
+        }
+
+        domain = `${domain}${chosenTld}`;
       }
 
       const response = await fetch('/api/resolve-site', {
@@ -86,6 +114,14 @@ export function Hero() {
     }
   };
 
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % 3);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + 3) % 3);
+  };
+
   useEffect(() => {
     if (isPaused) return;
 
@@ -115,13 +151,20 @@ export function Hero() {
                     <br />
                     <span className="text-green-600">Browse with confidence.</span>
                   </h1>
+
                   <p className="text-gray-600 mb-8 text-lg">
                     Check if your websites are safe
                   </p>
 
-                  <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mb-6">
-                    Add to browser
-                  </Button>
+                  <a
+                    href={EXTENSION_DOWNLOAD_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mb-6">
+                      Add to browser
+                    </Button>
+                  </a>
 
                   <div className="relative">
                     <div className="relative flex items-center bg-green-600 rounded-full h-14">
@@ -144,9 +187,12 @@ export function Hero() {
                       <div className="relative">
                         <select
                           value={selectedTld}
-                          onChange={(e) => setSelectedTld(e.target.value)}
+                          onChange={(e) => {
+                            setSelectedTld(e.target.value);
+                            if (searchError) setSearchError('');
+                          }}
                           onFocus={() => setIsPaused(true)}
-                          className="h-14 pl-4 pr-10 bg-transparent border-0 text-white text-base cursor-pointer appearance-none focus:outline-none focus:ring-0 min-w-[90px]"
+                          className="h-14 pl-4 pr-10 bg-transparent border-0 text-white text-base cursor-pointer appearance-none focus:outline-none focus:ring-0 min-w-[100px]"
                           style={{
                             backgroundImage: 'none',
                             WebkitAppearance: 'none',
@@ -163,6 +209,7 @@ export function Hero() {
                             </option>
                           ))}
                         </select>
+
                         <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 size-4 text-white pointer-events-none" />
                       </div>
 
@@ -177,6 +224,20 @@ export function Hero() {
                         <Search className="size-5" />
                       </button>
                     </div>
+
+                    {selectedTld === 'Other...' && (
+                      <Input
+                        type="text"
+                        placeholder="Enter custom TLD, ex: .xyz"
+                        value={customTld}
+                        onFocus={() => setIsPaused(true)}
+                        onChange={(e) => {
+                          setCustomTld(e.target.value);
+                          if (searchError) setSearchError('');
+                        }}
+                        className="mt-3 w-48 border border-gray-300 rounded-lg bg-white"
+                      />
+                    )}
 
                     {searchError && (
                       <p className="mt-3 text-sm text-red-600">
@@ -218,6 +279,7 @@ export function Hero() {
                     <br />
                     <span className="text-green-600">RiskLens Extension</span>
                   </h1>
+
                   <p className="text-gray-600 mb-8 text-lg">
                     Get started in 3 simple steps
                   </p>
@@ -255,10 +317,16 @@ export function Hero() {
                   </div>
 
                   <div className="flex gap-4">
-                    <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mt-8">
-                      <Download className="mr-2 size-4" />
-                      Add to Browser
-                    </Button>
+                    <a
+                      href={EXTENSION_DOWNLOAD_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12 mt-8">
+                        <Download className="mr-2 size-4" />
+                        Add to Browser
+                      </Button>
+                    </a>
 
                     <Link to="/how-it-works">
                       <Button
@@ -298,6 +366,7 @@ export function Hero() {
                     <br />
                     <span className="text-green-600">We&apos;re here to help</span>
                   </h1>
+
                   <p className="text-gray-600 mb-8 text-lg">
                     Have questions or feedback? Get in touch with our team
                   </p>
@@ -324,11 +393,11 @@ export function Hero() {
                     </div>
                   </div>
 
-                  <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12">
-                    <Link to="/help">
+                  <Link to="/help">
+                    <Button className="bg-green-600 text-white hover:bg-green-700 rounded-full px-8 h-12">
                       Contact Support
-                    </Link>
-                  </Button>
+                    </Button>
+                  </Link>
                 </div>
 
                 <div className="relative">
@@ -343,28 +412,46 @@ export function Hero() {
           )}
         </AnimatePresence>
 
-        <div className="flex justify-center gap-2 mt-12">
+        <div className="flex justify-center items-center gap-4 mt-12">
           <button
-            onClick={() => setCurrentSlide(0)}
-            className={`w-2.5 h-2.5 rounded-full transition-colors ${
-              currentSlide === 0 ? 'bg-green-600' : 'bg-gray-300'
-            }`}
-            aria-label="Go to slide 1"
-          />
+            onClick={prevSlide}
+            className="w-8 h-8 bg-white rounded-full shadow flex items-center justify-center text-gray-700 hover:bg-green-600 hover:text-white transition-all"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="size-5" />
+          </button>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentSlide(0)}
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                currentSlide === 0 ? 'bg-green-600' : 'bg-gray-300'
+              }`}
+              aria-label="Go to slide 1"
+            />
+            <button
+              onClick={() => setCurrentSlide(1)}
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                currentSlide === 1 ? 'bg-green-600' : 'bg-gray-300'
+              }`}
+              aria-label="Go to slide 2"
+            />
+            <button
+              onClick={() => setCurrentSlide(2)}
+              className={`w-2.5 h-2.5 rounded-full transition-colors ${
+                currentSlide === 2 ? 'bg-green-600' : 'bg-gray-300'
+              }`}
+              aria-label="Go to slide 3"
+            />
+          </div>
+
           <button
-            onClick={() => setCurrentSlide(1)}
-            className={`w-2.5 h-2.5 rounded-full transition-colors ${
-              currentSlide === 1 ? 'bg-green-600' : 'bg-gray-300'
-            }`}
-            aria-label="Go to slide 2"
-          />
-          <button
-            onClick={() => setCurrentSlide(2)}
-            className={`w-2.5 h-2.5 rounded-full transition-colors ${
-              currentSlide === 2 ? 'bg-green-600' : 'bg-gray-300'
-            }`}
-            aria-label="Go to slide 3"
-          />
+            onClick={nextSlide}
+            className="w-8 h-8 bg-white rounded-full shadow flex items-center justify-center text-gray-700 hover:bg-green-600 hover:text-white transition-all"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="size-5" />
+          </button>
         </div>
       </div>
     </section>

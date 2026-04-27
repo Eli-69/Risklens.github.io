@@ -1,14 +1,16 @@
 import { useParams, Link, useNavigate } from 'react-router';
 import { Navigation } from '../components/Navigation';
 import { Footer } from '../components/Footer';
-import { Star, MessageSquare } from 'lucide-react';
+import { Star, MessageSquare, Flag } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { useState, useEffect } from 'react';
 import { saveScanResult } from '../services/scanService';
 import { saveSite } from '../services/dashboardService';
+import { submitSiteReview, getReviewsForSite } from '../services/reviewService';
 import { auth } from '../../lib/firebase';
+import { logActivity } from '../services/activityService';
 
 export function SecurityInsights() {
   const { domain } = useParams();
@@ -16,29 +18,20 @@ export function SecurityInsights() {
 
   const decodedInput = domain ? decodeURIComponent(domain).trim() : '';
 
-  function normalizeUrl(input: string) {
-    if (!input) return '';
-
-    let url = input.startsWith('http') ? input : `https://${input}`;
-
+  function normalizeUrl(input: string): string {
     try {
-      const parsed = new URL(url);
+      let url = input.trim();
 
-      if (
-        !parsed.hostname.startsWith('www.') &&
-        parsed.hostname.split('.').length === 2
-      ) {
-        parsed.hostname = `www.${parsed.hostname}`;
+      if (!url.startsWith('http')) {
+        url = 'https://' + url;
       }
 
-      if (!parsed.pathname || parsed.pathname === '') {
-        parsed.pathname = '/';
-      }
+      // ✅ Keep FULL URL (path + query)
+      return new URL(url).toString();
 
-      return parsed.toString();
     } catch {
-      return url;
-    }
+      return input;
+    } 
   }
 
   const fullUrl = normalizeUrl(decodedInput);
@@ -57,6 +50,10 @@ export function SecurityInsights() {
 
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   const [siteSaved, setSiteSaved] = useState(false);
+
+  const [siteReviews, setSiteReviews] = useState<any[]>([]);
+  const [reviewError, setReviewError] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
 
   useEffect(() => {
     async function loadInsights() {
@@ -101,17 +98,15 @@ export function SecurityInsights() {
                     ? result.prob_phishing * 100
                     : 0;
 
-          const savedScore =
-            savedRawScore <= 1
-              ? Math.round(savedRawScore * 100)
-              : Math.round(savedRawScore);
+          const savedScore = Math.round(savedRawScore);
+          console.log(savedScore);
 
           const savedVerdict =
             result.verdict ??
             result.classification ??
-            (savedScore >= 60
+            (savedScore >= 85
               ? 'dangerous'
-              : savedScore >= 30
+              : savedScore >= 50
                 ? 'suspicious'
                 : 'safe');
 
@@ -120,12 +115,19 @@ export function SecurityInsights() {
             score: savedScore,
             verdict: savedVerdict,
             source: data.source ?? result.decision_source ?? 'ml',
+            modelResult: result,
           });
+
+          await logActivity('Site scanned', fullUrl);
+
         } catch (saveError: any) {
           if (saveError?.message !== 'User not logged in') {
             console.log('Scan not saved:', saveError);
           }
         }
+
+        const reviews = await getReviewsForSite(fullUrl);
+        setSiteReviews(reviews);
       } catch (err: any) {
         setError(err.message || 'Something went wrong');
       } finally {
@@ -137,8 +139,8 @@ export function SecurityInsights() {
   }, [fullUrl]);
 
   const getRiskScoreColor = (score: number) => {
-    if (score <= 30) return 'text-green-600';
-    if (score <= 60) return 'text-orange-500';
+    if (score < 50) return 'text-green-600';
+    if (score < 85) return 'text-orange-500';
     return 'text-red-600';
   };
 
@@ -178,18 +180,57 @@ export function SecurityInsights() {
     }
   };
 
-  const handleSubmitReview = () => {
-    console.log('Review submitted:', { userName, userReview, userRating });
-    setUserName('');
-    setUserReview('');
-    setUserRating(0);
+  const handleSubmitReview = async () => {
+    try {
+      setReviewSubmitting(true);
+      setReviewError('');
+
+      if (!auth.currentUser) {
+        setShowLoginPrompt(true);
+        return;
+      }
+
+      if (!userName.trim()) {
+        setReviewError('Please enter your name.');
+        return;
+      }
+
+      if (userRating < 1 || userRating > 5) {
+        setReviewError('Please select a rating.');
+        return;
+      }
+
+      if (!userReview.trim()) {
+        setReviewError('Please enter a review.');
+        return;
+      }
+
+      await submitSiteReview({
+        name: userName.trim(),
+        rating: userRating,
+        review: userReview.trim(),
+        url: fullUrl,
+        domain: cleanDomain,
+      });
+
+      const updatedReviews = await getReviewsForSite(fullUrl);
+      setSiteReviews(updatedReviews);
+
+      setUserName('');
+      setUserReview('');
+      setUserRating(0);
+    } catch (err: any) {
+      setReviewError(err.message || 'Failed to submit review.');
+    } finally {
+      setReviewSubmitting(false);
+    }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />
-        <div className="container mx-auto px-6 py-12">
+        <div className="container mx-auto px-6 pt-24 pb-12">
           <p className="text-lg text-gray-700">Analyzing site...</p>
         </div>
         <Footer />
@@ -201,7 +242,7 @@ export function SecurityInsights() {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navigation />
-        <div className="container mx-auto px-6 py-12">
+        <div className="container mx-auto px-6 pt-24 pb-12">
           <p className="text-lg text-red-600">{error}</p>
         </div>
         <Footer />
@@ -222,18 +263,17 @@ export function SecurityInsights() {
             ? result.prob_phishing * 100
             : 0;
 
-  const riskScore =
-    rawScore <= 1 ? Math.round(rawScore * 100) : Math.round(rawScore);
+  const riskScore = Math.round(rawScore);
 
   const shouldWarn =
     typeof result.should_warn === 'boolean'
       ? result.should_warn
-      : riskScore >= 30;
+      : riskScore >= 50;
 
   const shouldBlock =
     typeof result.should_block === 'boolean'
       ? result.should_block
-      : riskScore >= 60;
+      : riskScore >= 85;
 
   const classification =
     shouldBlock
@@ -267,7 +307,6 @@ export function SecurityInsights() {
   const sslCertificate = {
     checked: Boolean(certificateCheck.checked),
     hasSSL: certificateCheck.checked ? Boolean(certificateCheck.cert_valid) : false,
-    isValid: certificateCheck.checked ? Boolean(certificateCheck.cert_valid) : false,
     isExpired: certificateCheck.checked ? Boolean(certificateCheck.cert_expired) : false,
   };
 
@@ -283,14 +322,106 @@ export function SecurityInsights() {
     signals,
     sslCertificate,
     trustedSites: [
-      'https://www.wikipedia.org',
-      'https://archive.org',
-      'https://www.gutenberg.org',
-      'https://www.khanacademy.org',
-      'https://www.nasa.gov',
-      'https://www.nih.gov',
-      'https://www.data.gov',
-      'https://www.duolingo.com',
+      {
+        category: '🔍 Search & Tools',
+        sites: [
+          'https://www.google.com',
+          'https://www.bing.com',
+          'https://duckduckgo.com',
+          'https://www.yahoo.com',
+          'https://www.wolframalpha.com',
+        ],
+      },
+      {
+        category: '🎓 Education & Learning',
+        sites: [
+          'https://www.khanacademy.org',
+          'https://www.coursera.org',
+          'https://www.edx.org',
+          'https://ocw.mit.edu',
+          'https://www.nationalgeographic.com',
+          'https://www.bbc.com',
+          'https://www.si.edu',
+        ],
+      },
+      {
+        category: '🛒 Shopping & E-commerce',
+        sites: [
+          'https://www.amazon.com',
+          'https://www.walmart.com',
+          'https://www.target.com',
+          'https://www.bestbuy.com',
+          'https://www.ebay.com',
+          'https://www.etsy.com',
+          'https://www.apple.com',
+        ],
+      },
+      {
+        category: '🍿 Movies, TV & Streaming',
+        sites: [
+          'https://www.netflix.com',
+          'https://www.disneyplus.com',
+          'https://www.hulu.com',
+          'https://www.youtube.com',
+          'https://www.imdb.com',
+        ],
+      },
+      {
+        category: '🚗 Cars & Automotive',
+        sites: [
+          'https://www.carmax.com',
+          'https://www.autotrader.com',
+          'https://www.kbb.com',
+          'https://www.cars.com',
+          'https://www.edmunds.com',
+        ],
+      },
+      {
+        category: '🥦 Groceries & Food',
+        sites: [
+          'https://www.instacart.com',
+          'https://www.wholefoodsmarket.com',
+          'https://www.kroger.com',
+          'https://www.hellofresh.com',
+          'https://www.doordash.com',
+        ],
+      },
+      {
+        category: '🎁 Giveaways, Deals & Discounts',
+        sites: [
+          'https://www.joinhoney.com',
+          'https://www.retailmenot.com',
+          'https://www.slickdeals.net',
+          'https://www.groupon.com',
+          'https://www.rakuten.com',
+        ],
+      },
+      {
+        category: '💼 Tech & Productivity',
+        sites: [
+          'https://www.microsoft.com',
+          'https://www.github.com',
+          'https://stackoverflow.com',
+          'https://www.dropbox.com',
+          'https://www.notion.so',
+        ],
+      },
+      {
+        category: '🌐 News & Information',
+        sites: [
+          'https://www.cnn.com',
+          'https://www.nytimes.com',
+          'https://www.reuters.com',
+          'https://www.npr.org',
+        ],
+      },
+      {
+        category: '🏛️ Government & Official',
+        sites: [
+          'https://www.usa.gov',
+          'https://www.irs.gov',
+        ],
+      },
     ],
   };
 
@@ -307,6 +438,8 @@ export function SecurityInsights() {
         riskScore: siteData.riskScore,
       });
 
+      await logActivity('Site saved to dashboard', cleanDomain);
+
       setSiteSaved(true);
       setTimeout(() => setSiteSaved(false), 3000);
     } catch (err) {
@@ -320,7 +453,7 @@ export function SecurityInsights() {
     <div className="min-h-screen bg-gray-50">
       <Navigation />
 
-      <div className="container mx-auto px-6 py-12">
+      <div className="container mx-auto px-6 pt-24 pb-12">
         <div className="grid lg:grid-cols-3 gap-12">
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-2xl border-2 border-gray-900 p-8">
@@ -364,13 +497,28 @@ export function SecurityInsights() {
                     </span>
                   </div>
 
-                  <div className={`bg-gray-100 border-l-4 ${getRecommendedActionColor(siteData.classification)} p-4 rounded`}>
+                  <div className={`bg-gray-100 border-l-4 ${getRecommendedActionColor(siteData.classification)} p-4 rounded mb-4`}>
                     <div className="text-gray-900 font-semibold mb-1">
                       Recommended Action:
                     </div>
                     <div className="text-gray-700 font-medium">
                       {siteData.recommendedAction}
                     </div>
+                  </div>
+
+                  <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-4">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/report-site?url=${encodeURIComponent(fullUrl)}&category=${encodeURIComponent('Incorrect Classification')}`
+                        )
+                      }
+                      className="flex items-center gap-2 text-orange-700 hover:text-orange-900 font-semibold transition-colors"
+                    >
+                      <Flag className="size-5" />
+                      Think this classification is wrong? Report it here
+                    </button>
                   </div>
                 </div>
               </div>
@@ -424,13 +572,6 @@ export function SecurityInsights() {
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-gray-700">Certificate Valid:</span>
-                        <span className={`font-semibold ${siteData.sslCertificate.isValid ? 'text-green-600' : 'text-red-600'}`}>
-                          {siteData.sslCertificate.isValid ? 'Yes ✓' : 'No ✗'}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between">
                         <span className="text-gray-700">Certificate Expired:</span>
                         <span className={`font-semibold ${siteData.sslCertificate.isExpired ? 'text-red-600' : 'text-green-600'}`}>
                           {siteData.sslCertificate.isExpired ? 'Yes ✗' : 'No ✓'}
@@ -451,24 +592,39 @@ export function SecurityInsights() {
                 User Reports
               </h2>
 
-              <div className="bg-gray-50 rounded-xl p-6">
-                <div className="flex items-start gap-4 mb-4">
-                  <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0" />
-                  <div className="flex-1">
-                    <div className="font-semibold text-gray-900 mb-1">
-                      User2361242692194
+              {siteReviews.length > 0 ? (
+                <div className="space-y-4 mb-8">
+                  {siteReviews.map((review, index) => (
+                    <div key={review.id || index} className="bg-gray-50 rounded-xl p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-full bg-gray-300 flex-shrink-0" />
+                        <div className="flex-1">
+                          <div className="font-semibold text-gray-900 mb-1">
+                            {review.name || 'Anonymous'}
+                          </div>
+                          <div className="flex gap-1 mb-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                className={`size-4 ${
+                                  star <= review.rating
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'fill-none text-gray-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-gray-700">{review.review}</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex gap-1 mb-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star key={star} className="size-4 fill-yellow-400 text-yellow-400" />
-                      ))}
-                    </div>
-                    <p className="text-gray-700">
-                      This site is very cool and awesome! I&apos;ve never had any problems with it.
-                    </p>
-                  </div>
+                  ))}
                 </div>
-              </div>
+              ) : (
+                <p className="text-gray-500 text-sm mb-8">
+                  No reviews yet. Be the first to share your experience!
+                </p>
+              )}
 
               <div className="mt-8">
                 <div className="flex items-start gap-2 mb-4">
@@ -484,7 +640,10 @@ export function SecurityInsights() {
                       type="text"
                       placeholder="Enter your name..."
                       value={userName}
-                      onChange={(e) => setUserName(e.target.value)}
+                      onChange={(e) => {
+                        setUserName(e.target.value);
+                        if (reviewError) setReviewError('');
+                      }}
                       className="w-full border-2 border-gray-900 rounded-lg"
                     />
                   </div>
@@ -498,7 +657,10 @@ export function SecurityInsights() {
                         <button
                           key={star}
                           type="button"
-                          onClick={() => setUserRating(star)}
+                          onClick={() => {
+                            setUserRating(star);
+                            if (reviewError) setReviewError('');
+                          }}
                           className="focus:outline-none"
                         >
                           <Star
@@ -520,16 +682,24 @@ export function SecurityInsights() {
                     <Textarea
                       placeholder="Share your experience good or bad..."
                       value={userReview}
-                      onChange={(e) => setUserReview(e.target.value)}
+                      onChange={(e) => {
+                        setUserReview(e.target.value);
+                        if (reviewError) setReviewError('');
+                      }}
                       className="w-full border-2 border-gray-900 rounded-lg min-h-32"
                     />
                   </div>
 
+                  {reviewError && (
+                    <p className="text-red-600 text-sm">{reviewError}</p>
+                  )}
+
                   <Button
                     onClick={handleSubmitReview}
-                    className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-8 h-12 font-semibold"
+                    disabled={reviewSubmitting}
+                    className="bg-green-600 hover:bg-green-700 text-white rounded-lg px-8 h-12 font-semibold disabled:opacity-50"
                   >
-                    Submit Review
+                    {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
                   </Button>
                 </div>
               </div>
@@ -537,24 +707,35 @@ export function SecurityInsights() {
           </div>
 
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl border-2 border-gray-900 p-6 sticky top-6">
+            <div className="bg-white rounded-2xl border-2 border-gray-900 p-6 sticky top-24 max-h-[calc(100vh-8rem)] overflow-y-auto">
               <h2 className="text-xl font-bold text-gray-900 mb-4">
                 More trusted websites
               </h2>
-              <ul className="space-y-2">
-                {siteData.trustedSites.map((site, index) => (
-                  <li key={index}>
-                    <a
-                      href={site}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline text-sm break-all"
-                    >
-                      {site}
-                    </a>
-                  </li>
+
+              <div className="space-y-4">
+                {siteData.trustedSites.map((category, categoryIndex) => (
+                  <div key={categoryIndex}>
+                    <h3 className="font-semibold text-gray-900 mb-2 text-sm">
+                      {category.category}
+                    </h3>
+
+                    <ul className="space-y-1 ml-2">
+                      {category.sites.map((site, siteIndex) => (
+                        <li key={siteIndex}>
+                          <a
+                            href={site}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm break-all"
+                          >
+                            {site}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           </div>
         </div>
@@ -574,7 +755,7 @@ export function SecurityInsights() {
       <Footer />
 
       {showLoginPrompt && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4">
+        <div className="fixed inset-0 bg-black/20 backdrop-blur-sm flex items-center justify-center z-50 px-4">
           <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-xl">
             <h2 className="text-2xl font-bold text-gray-900 mb-3">
               Sign In Required

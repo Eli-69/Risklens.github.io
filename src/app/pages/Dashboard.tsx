@@ -13,7 +13,8 @@ import {
 import { Link } from 'react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { getUserScans } from '../services/scanService';
-import { getSavedSites, getReviews } from '../services/dashboardService';
+import { getSavedSites } from '../services/dashboardService';
+import { getMyReviews } from '../services/reviewService';
 
 type ScanItem = {
   id: string;
@@ -32,13 +33,12 @@ type SavedSite = {
   savedDate?: any;
 };
 
-type Review = {
+type FrequentSite = {
   id: string;
   domain: string;
-  url: string;
-  comment: string;
-  rating: number;
-  date?: any;
+  scans: number;
+  avgRisk: number;
+  status: string;
 };
 
 export function Dashboard() {
@@ -46,7 +46,9 @@ export function Dashboard() {
   const [error, setError] = useState('');
   const [scans, setScans] = useState<ScanItem[]>([]);
   const [savedWebsites, setSavedWebsites] = useState<SavedSite[]>([]);
-  const [recentComments, setRecentComments] = useState<Review[]>([]);
+  const [myReviews, setMyReviews] = useState<any[]>([]);
+  const [frequentlyBrowsedSites, setFrequentlyBrowsedSites] = useState<FrequentSite[]>([]);
+  const [personalRiskScore, setPersonalRiskScore] = useState(0);
 
   useEffect(() => {
     async function loadDashboard() {
@@ -54,15 +56,67 @@ export function Dashboard() {
         setLoading(true);
         setError('');
 
-        const [scanData, savedData, reviewData] = await Promise.all([
+        const [scanData, savedData, reviews] = await Promise.all([
           getUserScans(),
           getSavedSites(),
-          getReviews(),
+          getMyReviews(),
         ]);
 
-        setScans(scanData as ScanItem[]);
+        const scans = scanData as ScanItem[];
+
+        setScans(scans);
         setSavedWebsites(savedData as SavedSite[]);
-        setRecentComments(reviewData as Review[]);
+        setMyReviews(reviews);
+
+        // Build frequently browsed sites from scan data
+        const scanGroups = new Map<string, any[]>();
+        scans.forEach((scan: any) => {
+          let domain = String(scan.domain || '');
+          if (!domain && scan.url) {
+            try {
+              domain = new URL(scan.url).hostname;
+            } catch {
+              domain = String(scan.url).replace(/^https?:\/\//, '').split('/')[0];
+            }
+          }
+          if (!domain) return;
+          if (!scanGroups.has(domain)) {
+            scanGroups.set(domain, []);
+          }
+          scanGroups.get(domain)?.push(scan);
+        });
+
+        const userFrequentSites = Array.from(scanGroups.entries())
+          .map(([domain, domainScans]) => {
+            const avgRisk =
+              domainScans.reduce((sum, scan) => sum + Number(scan.score || 0), 0) /
+              domainScans.length;
+            return {
+              id: domain,
+              domain,
+              scans: domainScans.length,
+              avgRisk: Math.round(avgRisk),
+              status:
+                avgRisk >= 60
+                  ? 'dangerous'
+                  : avgRisk >= 30
+                    ? 'moderate'
+                    : 'safe',
+            };
+          })
+          .sort((a, b) => b.scans - a.scans)
+          .slice(0, 5);
+
+        setFrequentlyBrowsedSites(userFrequentSites);
+
+        // Calculate personal risk score from most recent 10 scans
+        const recentScans = scans.slice(0, 10);
+        const personalRisk =
+          recentScans.length > 0
+            ? recentScans.reduce((sum, scan) => sum + Number(scan.score || 0), 0) /
+              recentScans.length
+            : 0;
+        setPersonalRiskScore(Math.round(personalRisk));
       } catch (err: any) {
         console.error('Dashboard load error:', err);
         setError(err.message || 'Failed to load dashboard data.');
@@ -107,59 +161,18 @@ export function Dashboard() {
     const safeSites = normalizedScans.filter((scan) => scan.score <= 30).length;
     const warnings = normalizedScans.filter((scan) => scan.score > 30).length;
 
-    const userRiskScore =
-      totalScans > 0
-        ? Math.round(
-            normalizedScans.reduce((sum, scan) => sum + scan.score, 0) / totalScans
-          )
-        : 0;
-
-    const domainMap = new Map<string, { visits: number; totalRisk: number }>();
-
-    normalizedScans.forEach((scan) => {
-      const current = domainMap.get(scan.domain) || {
-        visits: 0,
-        totalRisk: 0,
-      };
-
-      current.visits += 1;
-      current.totalRisk += scan.score;
-
-      domainMap.set(scan.domain, current);
-    });
-
-    const frequentWebsites = Array.from(domainMap.entries())
-      .map(([domain, value]) => {
-        const riskScore = Math.round(value.totalRisk / value.visits);
-
-        let status = 'safe';
-        if (riskScore > 60) status = 'warning';
-        else if (riskScore > 30) status = 'moderate';
-
-        return {
-          domain,
-          visits: value.visits,
-          riskScore,
-          status,
-        };
-      })
-      .sort((a, b) => b.visits - a.visits)
-      .slice(0, 5);
-
     return {
-      userRiskScore,
       totalScans,
       safeSites,
       warnings,
-      frequentWebsites,
       stats: [
         { label: 'Total Scans', value: totalScans.toLocaleString(), icon: Globe },
         { label: 'Safe Sites', value: safeSites.toLocaleString(), icon: CheckCircle },
         { label: 'Warnings', value: warnings.toLocaleString(), icon: AlertTriangle },
-        { label: 'Reviews', value: recentComments.length.toLocaleString(), icon: MessageSquare },
+        { label: 'Reviews', value: myReviews.length.toLocaleString(), icon: MessageSquare },
       ],
     };
-  }, [scans, recentComments]);
+  }, [scans, myReviews]);
 
   const getRiskColor = (score: number) => {
     if (score <= 30) return 'text-green-600';
@@ -177,6 +190,7 @@ export function Dashboard() {
     const colors = {
       safe: 'bg-green-100 text-green-700',
       moderate: 'bg-yellow-100 text-yellow-700',
+      dangerous: 'bg-red-100 text-red-700',
       warning: 'bg-red-100 text-red-700',
     };
     return colors[status as keyof typeof colors] || colors.safe;
@@ -244,14 +258,14 @@ export function Dashboard() {
                       strokeWidth="12"
                       fill="none"
                       strokeDasharray={`${2 * Math.PI * 56}`}
-                      strokeDashoffset={`${2 * Math.PI * 56 * (1 - dashboardData.userRiskScore / 100)}`}
+                      strokeDashoffset={`${2 * Math.PI * 56 * (1 - personalRiskScore / 100)}`}
                       strokeLinecap="round"
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <div className="text-3xl font-bold text-gray-900">
-                        {dashboardData.userRiskScore}
+                        {personalRiskScore}
                       </div>
                       <div className="text-xs text-gray-500">/ 100</div>
                     </div>
@@ -315,9 +329,9 @@ export function Dashboard() {
                 <h2 className="text-xl font-bold text-gray-900">Frequently Visited</h2>
               </div>
               <div className="space-y-4">
-                {dashboardData.frequentWebsites.map((site, index) => (
+                {frequentlyBrowsedSites.map((site) => (
                   <Link
-                    key={index}
+                    key={site.id}
                     to={`/insights/${encodeURIComponent(site.domain)}`}
                     className="flex items-center justify-between p-4 rounded-lg hover:bg-gray-50 transition-colors border border-gray-100"
                   >
@@ -326,20 +340,20 @@ export function Dashboard() {
                         <Globe className="w-4 h-4 text-gray-400" />
                         <span className="font-medium text-gray-900">{site.domain}</span>
                       </div>
-                      <div className="text-sm text-gray-500">{site.visits} visits</div>
+                      <div className="text-sm text-gray-500">{site.scans} scans</div>
                     </div>
                     <div className="flex items-center gap-3">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusBadge(site.status)}`}>
                         {site.status}
                       </span>
-                      <span className={`font-bold ${getRiskColor(site.riskScore)}`}>
-                        {site.riskScore}
+                      <span className={`font-bold ${getRiskColor(site.avgRisk)}`}>
+                        {site.avgRisk}
                       </span>
                     </div>
                   </Link>
                 ))}
 
-                {dashboardData.frequentWebsites.length === 0 && (
+                {frequentlyBrowsedSites.length === 0 && (
                   <p className="text-gray-500">No scan history yet.</p>
                 )}
               </div>
@@ -388,24 +402,24 @@ export function Dashboard() {
                 <h2 className="text-xl font-bold text-gray-900">Your Recent Reviews</h2>
               </div>
               <div className="space-y-4">
-                {recentComments.length === 0 ? (
+                {myReviews.length === 0 ? (
                   <p className="text-gray-500">No reviews yet.</p>
                 ) : (
-                  recentComments.map((comment) => (
-                    <div key={comment.id} className="p-4 rounded-lg border border-gray-100">
+                  myReviews.map((review) => (
+                    <div key={review.id} className="p-4 rounded-lg border border-gray-100">
                       <div className="flex items-start justify-between mb-2">
                         <Link
-                          to={`/insights/${encodeURIComponent(comment.url || comment.domain)}`}
+                          to={`/insights/${encodeURIComponent(review.url || review.domain)}`}
                           className="font-medium text-gray-900 hover:text-green-600 transition-colors"
                         >
-                          {comment.domain}
+                          {review.domain}
                         </Link>
                         <div className="flex items-center gap-1">
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
                               className={`w-4 h-4 ${
-                                i < comment.rating
+                                i < review.rating
                                   ? 'fill-yellow-400 text-yellow-400'
                                   : 'text-gray-300'
                               }`}
@@ -413,8 +427,8 @@ export function Dashboard() {
                           ))}
                         </div>
                       </div>
-                      <p className="text-gray-700 mb-2">{comment.comment}</p>
-                      <p className="text-sm text-gray-500">{formatDate(comment.date)}</p>
+                      <p className="text-gray-700 mb-2">{review.review}</p>
+                      <p className="text-sm text-gray-500">{formatDate(review.date)}</p>
                     </div>
                   ))
                 )}

@@ -9,10 +9,13 @@ import {
   Shield,
   AlertTriangle,
   CheckCircle,
+  Star,
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { collection, doc, getDoc, getDocs } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
+import { getAllSiteReviews } from '../services/reviewService';
+import { getAllSiteScans } from '../services/scanService';
 
 type Stats = {
   totalUsers: number;
@@ -34,6 +37,7 @@ type FrequentlyBrowsedSite = {
 type RecentActivityItem = {
   id: string;
   action: string;
+  details: string;
   user: string;
   time: string;
 };
@@ -76,6 +80,7 @@ export function AdminDashboard() {
   const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
   const [helpRequests, setHelpRequests] = useState<HelpRequest[]>([]);
   const [reportedSites, setReportedSites] = useState<ReportedSite[]>([]);
+  const [allReviews, setAllReviews] = useState<any[]>([]);
 
   useEffect(() => {
     async function loadAdminData() {
@@ -84,48 +89,100 @@ export function AdminDashboard() {
         setError('');
 
         const [
-          statsSnap,
-          sitesSnap,
+          usersSnap,
           activitySnap,
           helpSnap,
           reportsSnap,
+          reviews,
+          scans,
         ] = await Promise.all([
-          getDoc(doc(db, 'adminStats', 'overview')),
-          getDocs(collection(db, 'frequentlyBrowsedSites')),
-          getDocs(collection(db, 'recentActivity')),
+          getDocs(collection(db, 'users')),
+          getDocs(query(collection(db, 'recentActivity'), orderBy('time', 'desc'))),
           getDocs(collection(db, 'helpRequests')),
           getDocs(collection(db, 'siteReports')),
+          getAllSiteReviews(),
+          getAllSiteScans(),
         ]);
 
-        if (statsSnap.exists()) {
-          const data = statsSnap.data();
-          setStats({
-            totalUsers: Number(data.totalUsers || 0),
-            totalScans: Number(data.totalScans || 0),
-            totalComments: Number(data.totalComments || 0),
-            activeSites: Number(data.activeSites || 0),
-            riskySites: Number(data.riskySites || 0),
-            safeSites: Number(data.safeSites || 0),
-          });
-        }
+        // Build stats from scans
+        const latestByDomain = new Map<string, any>();
+        scans.forEach((scan: any) => {
+          const domain = String(scan.domain || '');
+          if (!domain) return;
+          if (!latestByDomain.has(domain)) {
+            latestByDomain.set(domain, scan);
+          }
+        });
 
-        setFrequentlyBrowsedSites(
-          sitesSnap.docs.map((docItem) => ({
-            id: docItem.id,
-            domain: String(docItem.data().domain || ''),
-            scans: Number(docItem.data().scans || 0),
-            avgRisk: Number(docItem.data().avgRisk || 0),
-            status: String(docItem.data().status || 'safe'),
-          }))
-        );
+        let safeSites = 0;
+        let riskySites = 0;
+        latestByDomain.forEach((scan: any) => {
+          const score = Number(scan.score || 0);
+          if (score >= 85) {
+            riskySites += 1;
+          } else if (score < 50) {
+            safeSites += 1;
+          }
+        });
+
+        setStats({
+          totalUsers: usersSnap.size,
+          totalScans: scans.length,
+          totalComments: reviews.length,
+          activeSites: latestByDomain.size,
+          riskySites,
+          safeSites,
+        });
+
+        // Build frequently browsed sites from scans
+        const scanGroups = new Map<string, any[]>();
+        scans.forEach((scan: any) => {
+          const domain = String(scan.domain || '');
+          if (!domain) return;
+          if (!scanGroups.has(domain)) {
+            scanGroups.set(domain, []);
+          }
+          scanGroups.get(domain)?.push(scan);
+        });
+
+        const browsedSites = Array.from(scanGroups.entries())
+          .map(([domain, domainScans]) => {
+            const avgRisk =
+              domainScans.reduce((sum, scan) => sum + Number(scan.score || 0), 0) /
+              domainScans.length;
+            const roundedAvg = Math.round(avgRisk);
+            return {
+              id: domain,
+              domain,
+              scans: domainScans.length,
+              avgRisk: roundedAvg,
+              status:
+                roundedAvg >= 85
+                  ? 'dangerous'
+                  : roundedAvg >= 50
+                    ? 'moderate'
+                    : 'safe',
+            };
+          })
+          .sort((a, b) => b.scans - a.scans)
+          .slice(0, 10);
+
+        setFrequentlyBrowsedSites(browsedSites);
 
         setRecentActivity(
-          activitySnap.docs.map((docItem) => ({
-            id: docItem.id,
-            action: String(docItem.data().action || ''),
-            user: String(docItem.data().user || ''),
-            time: String(docItem.data().time || ''),
-          }))
+          activitySnap.docs.map((docItem) => {
+            const data = docItem.data();
+            
+            return {
+              id: docItem.id,
+              action: String(data.action || ''),
+              details: String(data.details || ''),
+              user: String(data.user || 'Anonymous'),
+              time: data.time?.toDate
+                ? data.time.toDate().toLocaleString()
+                : 'Unknown date',
+            };
+          })
         );
 
         setHelpRequests(
@@ -143,7 +200,7 @@ export function AdminDashboard() {
         );
 
         setReportedSites(
-           reportsSnap.docs.map((docItem) => ({
+          reportsSnap.docs.map((docItem) => ({
             id: docItem.id,
             url: String(docItem.data().url || ''),
             category: String(docItem.data().category || ''),
@@ -161,6 +218,7 @@ export function AdminDashboard() {
           }))
         );
 
+        setAllReviews(reviews);
       } catch (err: any) {
         console.error('Admin dashboard load error:', err);
         setError(err.message || 'Failed to load admin dashboard data.');
@@ -172,9 +230,15 @@ export function AdminDashboard() {
     loadAdminData();
   }, [timeRange]);
 
+  const formatDate = (timestamp: any) => {
+    if (!timestamp) return 'Unknown date';
+    if (timestamp.toDate) return timestamp.toDate().toLocaleString();
+    return String(timestamp);
+  };
+
   const getRiskColor = (risk: number) => {
-    if (risk < 20) return 'text-green-600';
-    if (risk < 50) return 'text-yellow-600';
+    if (risk < 50) return 'text-green-600';
+    if (risk < 85) return 'text-yellow-600';
     return 'text-red-600';
   };
 
@@ -274,7 +338,7 @@ export function AdminDashboard() {
               </div>
             </div>
             <h3 className="text-gray-600 text-sm mb-1">Total Comments</h3>
-            <p className="text-3xl font-bold text-gray-900">{stats.totalComments.toLocaleString()}</p>
+            <p className="text-3xl font-bold text-gray-900">{allReviews.length.toLocaleString()}</p>
           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -297,7 +361,7 @@ export function AdminDashboard() {
               <h3 className="font-semibold text-gray-900">Safe Sites</h3>
             </div>
             <p className="text-3xl font-bold text-green-600 mb-2">{stats.safeSites.toLocaleString()}</p>
-            <p className="text-sm text-gray-600">Risk score below 20</p>
+            <p className="text-sm text-gray-600">Risk score below 50</p>
           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -310,7 +374,7 @@ export function AdminDashboard() {
             <p className="text-3xl font-bold text-yellow-600 mb-2">
               {moderateRiskCount.toLocaleString()}
             </p>
-            <p className="text-sm text-gray-600">Risk score 20-50</p>
+            <p className="text-sm text-gray-600">Risk score 50–84</p>
           </div>
 
           <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
@@ -321,7 +385,7 @@ export function AdminDashboard() {
               <h3 className="font-semibold text-gray-900">High Risk Sites</h3>
             </div>
             <p className="text-3xl font-bold text-red-600 mb-2">{stats.riskySites.toLocaleString()}</p>
-            <p className="text-sm text-gray-600">Risk score above 50</p>
+            <p className="text-sm text-gray-600">Risk score 85 or above</p>
           </div>
         </div>
 
@@ -377,9 +441,24 @@ export function AdminDashboard() {
             <div className="space-y-4">
               {recentActivity.map((activity) => (
                 <div key={activity.id} className="pb-4 border-b border-gray-100 last:border-0">
-                  <p className="font-medium text-gray-900 text-sm mb-1">{activity.action}</p>
-                  <p className="text-sm text-gray-600 mb-1">{activity.user}</p>
-                  <p className="text-xs text-gray-500">{activity.time}</p>
+                  <p className="font-medium text-gray-900 text-sm mb-1">
+                    {activity.action}
+                  </p>
+
+                  {activity.details && (
+                    <p className="text-sm text-gray-600 mb-1 break-all">
+                      {activity.details}
+                    </p>
+                  )}
+
+                  <p className="text-sm text-gray-600 mb-1">
+                    {activity.user}
+                  </p>
+                  
+                  <p className="text-xs text-gray-500">
+                    {activity.time}
+                  </p>
+
                 </div>
               ))}
               {recentActivity.length === 0 && (
@@ -425,7 +504,7 @@ export function AdminDashboard() {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-gray-900">Reported Sites</h2>
               <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
-                {reportedSites.filter((r) => r.status === 'pending').length} Pending
+                {reportedSites.filter((r) => r.status === 'under-review').length} Under Review
               </span>
             </div>
 
@@ -450,6 +529,81 @@ export function AdminDashboard() {
                 <p className="text-gray-500">No reported sites yet.</p>
               )}
             </div>
+          </div>
+        </div>
+
+        <div className="mt-6 bg-white rounded-xl p-6 shadow-sm border border-gray-200">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+              <Star className="size-5 text-purple-600" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900">All Site Reviews</h2>
+            <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-semibold">
+              {allReviews.length} Total
+            </span>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Domain</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">URL</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">User</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Rating</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Review</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Date</th>
+                </tr>
+              </thead>
+              <tbody>
+                {allReviews.map((review) => (
+                  <tr key={review.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-4 px-4">
+                      <span className="font-medium text-gray-900">{review.domain}</span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-sm text-blue-600 break-all max-w-[160px] block truncate" title={review.url}>
+                        {review.url}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-sm text-gray-600">
+                        {review.userEmail || review.email || 'Anonymous'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4">
+                      <div className="flex items-center gap-1">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`size-4 ${
+                              i < review.rating
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'text-gray-300'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                    </td>
+                    <td className="py-4 px-4">
+                      <p className="text-sm text-gray-700 max-w-[240px] line-clamp-2">{review.review}</p>
+                    </td>
+                    <td className="py-4 px-4">
+                      <span className="text-xs text-gray-500 whitespace-nowrap">
+                        {formatDate(review.createdAt ?? review.date)}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {allReviews.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="py-4 px-4 text-gray-500">
+                      No reviews yet.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
